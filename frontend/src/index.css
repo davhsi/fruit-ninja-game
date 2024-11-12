@@ -40,3 +40,7 @@
 .animate-slice {
     animation: slice 0.3s forwards;
 }
+
+.bomb {
+    color: red; /* Style for bombs */
+}
