@@ -1,3 +1,42 @@
+/* index.css */
+
+/* Tailwind CSS Imports */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Custom Sword Cursor */
+.sword-cursor {
+    cursor: url('/sword-cursor.png'), auto;
+}
+
+/* Falling fruit animation */
+@keyframes fall {
+    from {
+        top: -10%;
+    }
+    to {
+        top: 110%;
+    }
+}
+
+/* Slice animation for fruit */
+@keyframes slice {
+    from {
+        transform: rotate(0deg) scale(1);
+    }
+    to {
+        transform: rotate(45deg) scale(0);
+        opacity: 0;
+    }
+}
+
+/* Apply falling animation */
+.animate-fall {
+    animation: fall 3s linear infinite;
+}
+
+/* Apply slice animation */
+.animate-slice {
+    animation: slice 0.3s forwards;
+}

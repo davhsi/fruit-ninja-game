@@ -8,9 +8,8 @@ const App = () => {
     const [roomId, setRoomId] = useState('');
     const [userId, setUserId] = useState('');
     const [ws, setWs] = useState(null);
-    const [finalScores, setFinalScores] = useState(null); 
-    const [liveScores, setLiveScores] = useState({});
-    const [timer, setTimer] = useState(60); // 60-second timer
+    const [finalScores, setFinalScores] = useState(null); // For final leaderboard
+    const [liveScores, setLiveScores] = useState({}); // For live leaderboard
 
     useEffect(() => {
         if (ws) {
@@ -20,35 +19,21 @@ const App = () => {
 
                 if (data.type === 'START_GAME') {
                     setPage('game');
-                    setTimer(60); // Reset timer to 60 seconds at game start
-                    startTimer();
                 }
                 if (data.type === 'UPDATE_SCORES') {
-                    setLiveScores(data.scores);
+                    setLiveScores(data.scores); // Update live scores
                 }
                 if (data.type === 'GAME_OVER') {
-                    setFinalScores(data.scores);
+                    setFinalScores(data.scores); // Store final scores
                     setPage('lobby');
                 }
             };
         }
 
         return () => {
-            if (ws) ws.onmessage = null; 
+            if (ws) ws.onmessage = null; // Clean up on unmount
         };
     }, [ws]);
-
-    const startTimer = () => {
-        const countdown = setInterval(() => {
-            setTimer((prev) => {
-                if (prev <= 1) {
-                    clearInterval(countdown); 
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-    };
 
     const handleCreateRoom = async () => {
         const size = prompt('Enter room size:');
@@ -121,7 +106,7 @@ const App = () => {
                     userId={userId}
                     ws={ws}
                     setPage={setPage}
-                    finalScores={finalScores}
+                    finalScores={finalScores} // Pass final scores to the lobby
                 />
             )}
 
@@ -129,8 +114,7 @@ const App = () => {
                 <Game
                     ws={ws}
                     userId={userId}
-                    liveScores={liveScores}
-                    timer={timer}
+                    liveScores={liveScores} // Pass live scores to the game
                 />
             )}
         </div>

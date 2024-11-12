@@ -21,11 +21,17 @@ function initializeWebSocket(server, wss) {
         });
 
         ws.on('close', () => {
-            rooms[roomId] = rooms[roomId].filter((client) => client !== ws);
-            if (rooms[roomId].length === 0) cleanupRoom(roomId, rooms);
+            // Only attempt to filter if the room still exists
+            if (rooms[roomId]) {
+                rooms[roomId] = rooms[roomId].filter((client) => client !== ws);
+                
+                // Clean up room if it's empty
+                if (rooms[roomId].length === 0) cleanupRoom(roomId, rooms);
+            }
         });
     });
 }
+
 
 // Start the game with a 60-second countdown and broadcast the timer updates
 async function handleStartGame(roomId) {
