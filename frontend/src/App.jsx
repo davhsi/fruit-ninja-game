@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Room from './Lobby';
 import Game from './Game';
-import { API_BASE_URL } from './config';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const App = () => {
+    const API_BASE_URL = process.env.VITE_API_BASE_URL;
     const [page, setPage] = useState('home');
     const [roomId, setRoomId] = useState('');
     const [userId, setUserId] = useState('');
