@@ -7,6 +7,8 @@ const cors = require('cors');
 const roomRoutes = require('./routes/roomRoutes');
 const { initializeWebSocket } = require('./websocket/wsHandler');
 const { redisClient } = require('./redis/redisClient');
+const job = require('./cron')
+job.start();
 
 dotenv.config();
 
