@@ -17,7 +17,7 @@ const wss = new WebSocket.Server({ noServer: true });
 
 // Middleware for CORS with options
 app.use(cors({
-    origin: 'http://localhost:5173', // Allow only your frontend's origin
+    origin: 'https://fruitninjahsi.vercel.app',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Specify allowed methods
     allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
     credentials: true, // Allow credentials like cookies or tokens
@@ -52,7 +52,7 @@ server.listen(port, () => {
 server.on('upgrade', async (req, socket, head) => {
     // Optionally set CORS headers for WebSocket upgrade if needed
     const origin = req.headers.origin;
-    if (origin !== 'https://fruitninjahsi.vercel.app/') { // Replace with frontend origin
+    if (origin !== 'https://fruitninjahsi.vercel.app') { // Replace with frontend origin
         socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
         socket.destroy();
         return;
