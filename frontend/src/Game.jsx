@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 
-// Define eggs and bombs
-const eggs = ["🥚"];
-const halfBoiledEgg = ["🍳"]; // Half-boiled egg emoji
+// Define fruits and bombs
+const fruits = ["🍎", "🍌", "🍍", "🍓"];
+const halfSlicedFruit = ["🍉"]; // Half-sliced fruit emoji (can be changed as desired)
 const bombs = ["💣"];
 
 const Game = ({ roomId, userId, ws, liveScores }) => {
@@ -12,21 +12,21 @@ const Game = ({ roomId, userId, ws, liveScores }) => {
   const [gameOver, setGameOver] = useState(false);
   const gameAreaRef = useRef(null);
 
-  // Spawn eggs and bombs
+  // Spawn fruits and bombs
   useEffect(() => {
     const spawnObject = () => {
       if (gameOver) return; // Stop spawning objects if the game is over
-      const objectType = Math.random() < 0.8 ? "egg" : "bomb"; // 80% chance for egg, 20% for bomb
+      const objectType = Math.random() < 0.8 ? "fruit" : "bomb"; // 80% chance for fruit, 20% for bomb
       const object =
-        objectType === "egg"
-          ? eggs[Math.floor(Math.random() * eggs.length)]
+        objectType === "fruit"
+          ? fruits[Math.floor(Math.random() * fruits.length)]
           : bombs[0];
       const id = Date.now();
       const left = Math.random() * 90;
       const top = 0;
       setFallingObjects((prev) => [
         ...prev,
-        { id, object, left, top, type: objectType, broken: false },
+        { id, object, left, top, type: objectType, sliced: false },
       ]);
 
       // Remove the object after falling for 3 seconds
@@ -62,31 +62,43 @@ const Game = ({ roomId, userId, ws, liveScores }) => {
     return () => clearInterval(countdown);
   }, [gameOver, ws, userId]);
 
-  // Handle object click (egg breaking or bomb defusing)
-  const handleClick = (id, type) => {
-    if (type === "bomb") {
+  // Handle object click (fruit slicing or bomb defusing)
+ const handleClick = (id, type) => {
+  if (type === "bomb") {
+    if (!fallingObjects.find((obj) => obj.id === id)?.sliced) {
+      // If it's not already sliced (clicked)
       setScore((prev) => prev - 1); // Bomb gives negative points
-    } else {
-      // Change egg to half-boiled egg after click
+      // Change bomb to skull emoji
+      setFallingObjects((prev) =>
+        prev.map((obj) =>
+          obj.id === id ? { ...obj, object: "💀", sliced: true } : obj
+        )
+      );
+    }
+  } else {
+    // Fruit slicing behavior
+    if (!fallingObjects.find((obj) => obj.id === id)?.sliced) {
       setFallingObjects((prev) =>
         prev.map((obj) =>
           obj.id === id
             ? {
                 ...obj,
-                object: halfBoiledEgg[0], // Change to half-boiled egg
-                broken: true, // Mark egg as broken
+                object: halfSlicedFruit[0], // Change to half-sliced fruit
+                sliced: true, // Mark fruit as sliced
               }
             : obj
         )
       );
-      setScore((prev) => prev + 1); // Egg gives positive points
+      setScore((prev) => prev + 1); // Fruit gives positive points
     }
+  }
 
-    // Send score update to the server via WebSocket
-    if (ws) {
-      ws.send(JSON.stringify({ type: "SLICE", userId }));
-    }
-  };
+  // Send score update to the server via WebSocket
+  if (ws) {
+    ws.send(JSON.stringify({ type: "SLICE", userId }));
+  }
+};
+
 
   // Sort live leaderboard
   const sortedScores = Object.entries(liveScores)
@@ -96,7 +108,7 @@ const Game = ({ roomId, userId, ws, liveScores }) => {
   return (
     <div
       ref={gameAreaRef}
-      className="relative h-screen w-full bg-gradient-to-b from-blue-200 to-blue-400 overflow-hidden hammer-cursor" // Use hammer-cursor class here
+      className="relative h-screen w-full bg-gradient-to-b from-blue-200 to-blue-400 overflow-hidden knife-cursor"
     >
       {/* Timer Display */}
       <div className="absolute top-0 left-0 p-4 text-2xl font-bold text-white">
@@ -129,15 +141,17 @@ const Game = ({ roomId, userId, ws, liveScores }) => {
         Score: {score}
       </div>
 
-      {/* Render falling eggs and bombs */}
+      {/* Render falling fruits and bombs */}
       {fallingObjects.map((obj) => (
         <div
           key={obj.id}
-          className={`absolute text-4xl ${obj.type === "bomb" ? "bomb" : "egg"} ${obj.broken ? "animate-half-boiled" : ""}`}
+          className={`absolute text-4xl ${
+            obj.type === "bomb" ? "bomb" : "fruit"
+          } ${obj.sliced ? "animate-sliced" : ""}`}
           style={{
             left: `${obj.left}%`,
             top: `${obj.top}%`,
-            animation: `fall 3s linear forwards, rotateEgg 3s linear infinite`,
+            animation: `fall 3s linear forwards`,
           }}
           onClick={() => handleClick(obj.id, obj.type)}
         >

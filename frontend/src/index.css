@@ -18,23 +18,7 @@
   animation: fall 3s linear forwards;
 }
 
-/* Egg rotation while falling */
-@keyframes rotateEgg {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-/* Egg styling (rotation effect) */
-.egg {
-  color: #FFD700; /* Color for the egg */
-  animation: fall 3s linear forwards, rotateEgg 3s linear infinite;
-}
-
-/* Animation for sliced or broken objects (egg breaking) */
+/* Sliced fruit animation */
 @keyframes sliced {
   0% {
     opacity: 1;
@@ -50,8 +34,8 @@
   }
 }
 
-/* Egg breaking animation */
-@keyframes breakEgg {
+/* Fruit breaking animation */
+@keyframes breakFruit {
   0% {
     transform: scale(1);
     opacity: 1;
@@ -66,34 +50,13 @@
   }
 }
 
-.animate-broken {
-  animation: breakEgg 0.5s ease-in-out forwards;
+.animate-sliced {
+  animation: breakFruit 0.5s ease-in-out forwards;
 }
 
-/* Half-boiled egg styling */
-@keyframes boilEgg {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(0.8);
-    opacity: 0.7;
-  }
-  100% {
-    transform: scale(1.2);
-    opacity: 1;
-  }
-}
-
-/* Half-boiled egg animation */
-.animate-half-boiled {
-  animation: boilEgg 1s ease-in-out forwards;
-}
-
-/* Hammer cursor using emoji */
-.hammer-cursor {
-  cursor: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="40" height="40"%3E%3Ctext x="0" y="16" font-size="16"%3E🔨%3C/text%3E%3C/svg%3E') 10 10, auto; /* Enlarged hammer emoji */
+/* Knife cursor using emoji */
+.knife-cursor {
+  cursor: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="40" height="40"%3E%3Ctext x="0" y="16" font-size="16"%3E🔪%3C/text%3E%3C/svg%3E') 10 10, auto;
 }
 
 /* Bomb styling */
