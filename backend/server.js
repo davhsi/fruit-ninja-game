@@ -9,7 +9,6 @@ const { initializeWebSocket } = require('./websocket/wsHandler');
 const { redisClient } = require('./redis/redisClient');
 const job = require('./cron'); 
 
-
 dotenv.config();
 
 const app = express();
@@ -17,11 +16,20 @@ const port = process.env.PORT || 5000;
 const server = createServer(app);
 const wss = new WebSocket.Server({ noServer: true });
 
-// Middleware for CORS with options
+// Middleware for CORS
+const allowedOrigins = ['https://fruitninjahsi.vercel.app', 'http://localhost:5173'];
+
+// Handle CORS for API routes
 app.use(cors({
-    origin: 'https://fruitninjahsi.vercel.app',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Specify allowed methods
-    allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
+    origin: (origin, callback) => {
+        if (allowedOrigins.includes(origin) || !origin) { // !origin is to allow requests from localhost (like Postman or server itself)
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allowed methods
+    allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
     credentials: true, // Allow credentials like cookies or tokens
 }));
 
@@ -52,14 +60,16 @@ server.listen(port, () => {
 
 // Upgrade for WebSocket with CORS handling
 server.on('upgrade', async (req, socket, head) => {
-    // Optionally set CORS headers for WebSocket upgrade if needed
     const origin = req.headers.origin;
-    if (origin !== 'https://fruitninjahsi.vercel.app') { // Replace with frontend origin
+
+    // Allow only specified origins for WebSocket connection
+    if (!allowedOrigins.includes(origin)) {
         socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
         socket.destroy();
         return;
     }
 
+    // Validate room existence (you can adjust this based on your logic)
     const roomId = req.url.split('/')[1];
     const roomExists = await redisClient.exists(`room:${roomId}:size`);
     if (!roomExists) {
@@ -68,6 +78,7 @@ server.on('upgrade', async (req, socket, head) => {
         return;
     }
 
+    // Handle WebSocket upgrade request
     wss.handleUpgrade(req, socket, head, (ws) => {
         wss.emit('connection', ws, roomId);
     });

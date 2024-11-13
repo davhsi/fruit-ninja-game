@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 
-const fruits = ["🍎", "🍌", "🍇", "🍊", "🍒"];
+// Define eggs and bombs
+const eggs = ["🥚"];
+const halfBoiledEgg = ["🍳"]; // Half-boiled egg emoji
 const bombs = ["💣"];
 
 const Game = ({ roomId, userId, ws, liveScores }) => {
@@ -10,29 +12,30 @@ const Game = ({ roomId, userId, ws, liveScores }) => {
   const [gameOver, setGameOver] = useState(false);
   const gameAreaRef = useRef(null);
 
-  // Handle fruit and bomb spawning
+  // Spawn eggs and bombs
   useEffect(() => {
     const spawnObject = () => {
-      const objectType = Math.random() < 0.8 ? "fruit" : "bomb"; // 80% chance for fruit, 20% for bomb
+      const objectType = Math.random() < 0.8 ? "egg" : "bomb"; // 80% chance for egg, 20% for bomb
       const object =
-        objectType === "fruit"
-          ? fruits[Math.floor(Math.random() * fruits.length)]
-          : bombs[0]; // Only one type of bomb for now
+        objectType === "egg"
+          ? eggs[Math.floor(Math.random() * eggs.length)]
+          : bombs[0];
       const id = Date.now();
-      const left = Math.random() * 90; // Position objects randomly across the screen width
+      const left = Math.random() * 90;
+      const top = 0;
       setFallingObjects((prev) => [
         ...prev,
-        { id, object, left, type: objectType },
+        { id, object, left, top, type: objectType, broken: false },
       ]);
 
-      // Remove object if it reaches the bottom of the screen
+      // Remove the object after falling for 3 seconds
       setTimeout(() => {
         setFallingObjects((prev) => prev.filter((obj) => obj.id !== id));
-      }, 3000); // Match the duration of the animation
+      }, 3000);
     };
 
-    const interval = setInterval(spawnObject, 1000); // Spawn an object every second
-
+    // Spawn objects every second
+    const interval = setInterval(spawnObject, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -45,7 +48,7 @@ const Game = ({ roomId, userId, ws, liveScores }) => {
         if (prev <= 1) {
           clearInterval(countdown);
           setGameOver(true);
-          // Send game over signal to server
+          // Send game over signal to the server
           if (ws) {
             ws.send(JSON.stringify({ type: "GAME_OVER", userId }));
           }
@@ -58,14 +61,25 @@ const Game = ({ roomId, userId, ws, liveScores }) => {
     return () => clearInterval(countdown);
   }, [gameOver]);
 
-  // Handle object click (fruit slicing or bomb defusing)
-  const handleSlice = (id, type) => {
+  // Handle object click (egg breaking or bomb defusing)
+  const handleClick = (id, type) => {
     if (type === "bomb") {
       setScore((prev) => prev - 1); // Bomb gives negative points
     } else {
-      setScore((prev) => prev + 1); // Fruit gives positive points
+      // Change egg to half-boiled egg after click
+      setFallingObjects((prev) =>
+        prev.map((obj) =>
+          obj.id === id
+            ? {
+                ...obj,
+                object: halfBoiledEgg[0], // Change to half-boiled egg
+                broken: true, // Mark egg as broken
+              }
+            : obj
+        )
+      );
+      setScore((prev) => prev + 1); // Egg gives positive points
     }
-    setFallingObjects((prev) => prev.filter((obj) => obj.id !== id));
 
     // Send score update to the server via WebSocket
     if (ws) {
@@ -80,8 +94,8 @@ const Game = ({ roomId, userId, ws, liveScores }) => {
 
   return (
     <div
-      className="relative h-screen w-full bg-gradient-to-b from-blue-200 to-blue-400 overflow-hidden sword-cursor"
       ref={gameAreaRef}
+      className="relative h-screen w-full bg-gradient-to-b from-blue-200 to-blue-400 overflow-hidden hammer-cursor" // Use hammer-cursor class here
     >
       {/* Timer Display */}
       <div className="absolute top-0 left-0 p-4 text-2xl font-bold text-white">
@@ -90,11 +104,8 @@ const Game = ({ roomId, userId, ws, liveScores }) => {
 
       {/* Live Leaderboard */}
       <div className="absolute top-0 right-0 p-4 text-white">
-        <h3 className="text-xl font-bold text-gray-800">Live Leaderboard</h3>{" "}
-        {/* Use a darker color for the header */}
+        <h3 className="text-xl font-bold text-gray-800">Live Leaderboard</h3>
         <ul className="text-gray-900">
-          {" "}
-          {/* Darker color for the player list */}
           {sortedScores.map(({ user, score, rank }) => (
             <li
               key={user}
@@ -117,18 +128,17 @@ const Game = ({ roomId, userId, ws, liveScores }) => {
         Score: {score}
       </div>
 
-      {/* Render falling fruits and bombs */}
+      {/* Render falling eggs and bombs */}
       {fallingObjects.map((obj) => (
         <div
           key={obj.id}
-          className={`absolute cursor-pointer text-4xl animate-fall ${
-            obj.type === "bomb" ? "bomb" : ""
-          }`}
+          className={`absolute text-4xl ${obj.type === "bomb" ? "bomb" : "egg"} ${obj.broken ? "animate-half-boiled" : ""}`}
           style={{
-            left: `${obj.left}%`, // Set horizontal position
-            top: "-10%", // Start slightly above the visible area
+            left: `${obj.left}%`,
+            top: `${obj.top}%`,
+            animation: `fall 3s linear forwards, rotateEgg 3s linear infinite`,
           }}
-          onClick={() => handleSlice(obj.id, obj.type)}
+          onClick={() => handleClick(obj.id, obj.type)}
         >
           {obj.object}
         </div>
