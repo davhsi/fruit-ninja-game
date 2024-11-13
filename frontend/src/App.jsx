@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Room from './Lobby';
 import Game from './Game';
+import { API_BASE_URL } from '../config';
 
 const App = () => {
     const [page, setPage] = useState('home');
@@ -41,7 +42,7 @@ const App = () => {
         setUserId(user);
 
         try {
-            const response = await axios.post('http://localhost:5000/create-room', {
+            const response = await axios.post(`${API_BASE_URL}/create-room`, {
                 size,
                 userId: user,
             });
@@ -60,7 +61,7 @@ const App = () => {
             const user = prompt('Enter your username:');
             setRoomId(id);
             setUserId(user);
-            await axios.post('http://localhost:5000/join-room', { roomId: id, userId: user });
+            await axios.post(`${API_BASE_URL}/join-room`, { roomId: id, userId: user });
             connectWs(id);
             setPage('lobby');
         } catch (err) {
@@ -70,7 +71,8 @@ const App = () => {
     };
 
     const connectWs = (roomId) => {
-        const socket = new WebSocket(`ws://localhost:5000/${roomId}`);
+        const wsUrl = `${API_BASE_URL.replace(/^http/, 'ws')}/${roomId}`;
+        const socket = new WebSocket(wsUrl);
         setWs(socket);
 
         socket.onopen = () => {
