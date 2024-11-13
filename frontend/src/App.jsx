@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Room from './Lobby';
 import Game from './Game';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL } from './config';
 
 const App = () => {
     const [page, setPage] = useState('home');
