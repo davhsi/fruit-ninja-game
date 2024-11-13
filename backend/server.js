@@ -15,9 +15,16 @@ const port = process.env.PORT || 5000;
 const server = createServer(app);
 const wss = new WebSocket.Server({ noServer: true });
 
-// Middleware
+// Middleware for CORS with options
+app.use(cors({
+    origin: 'http://localhost:5173', // Allow only your frontend's origin
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Specify allowed methods
+    allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
+    credentials: true, // Allow credentials like cookies or tokens
+}));
+
+// Middleware for JSON parsing
 app.use(express.json());
-app.use(cors());
 
 // Routes
 app.use('/', roomRoutes);
@@ -41,8 +48,16 @@ server.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
 
-// Upgrade for WebSocket
+// Upgrade for WebSocket with CORS handling
 server.on('upgrade', async (req, socket, head) => {
+    // Optionally set CORS headers for WebSocket upgrade if needed
+    const origin = req.headers.origin;
+    if (origin !== 'https://fruitninjahsi.vercel.app/') { // Replace with frontend origin
+        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+        socket.destroy();
+        return;
+    }
+
     const roomId = req.url.split('/')[1];
     const roomExists = await redisClient.exists(`room:${roomId}:size`);
     if (!roomExists) {
