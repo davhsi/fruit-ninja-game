@@ -15,6 +15,7 @@ const Game = ({ roomId, userId, ws, liveScores }) => {
   // Spawn eggs and bombs
   useEffect(() => {
     const spawnObject = () => {
+      if (gameOver) return; // Stop spawning objects if the game is over
       const objectType = Math.random() < 0.8 ? "egg" : "bomb"; // 80% chance for egg, 20% for bomb
       const object =
         objectType === "egg"
@@ -37,7 +38,7 @@ const Game = ({ roomId, userId, ws, liveScores }) => {
     // Spawn objects every second
     const interval = setInterval(spawnObject, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [gameOver]);
 
   // Timer logic
   useEffect(() => {
@@ -47,7 +48,7 @@ const Game = ({ roomId, userId, ws, liveScores }) => {
       setTimer((prev) => {
         if (prev <= 1) {
           clearInterval(countdown);
-          setGameOver(true);
+          setGameOver(true); // End the game
           // Send game over signal to the server
           if (ws) {
             ws.send(JSON.stringify({ type: "GAME_OVER", userId }));
@@ -59,7 +60,7 @@ const Game = ({ roomId, userId, ws, liveScores }) => {
     }, 1000);
 
     return () => clearInterval(countdown);
-  }, [gameOver]);
+  }, [gameOver, ws, userId]);
 
   // Handle object click (egg breaking or bomb defusing)
   const handleClick = (id, type) => {
@@ -99,7 +100,7 @@ const Game = ({ roomId, userId, ws, liveScores }) => {
     >
       {/* Timer Display */}
       <div className="absolute top-0 left-0 p-4 text-2xl font-bold text-white">
-        Timer: {timer}s
+        Timer: {gameOver ? "Game Over" : `${timer}s`}
       </div>
 
       {/* Live Leaderboard */}
