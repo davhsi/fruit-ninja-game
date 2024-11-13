@@ -1,28 +1,25 @@
-const cron = require('cron');
+const { CronJob } = require('cron');
 const https = require('https');
 
-const backendUrl = 'https://fruitninjaapi.onrender.com';
-const job = new cron.CronJob('*/14 * * * *', function () {
-  // This function will be executed every 14 minutes.
-  console.log(`Restarting server`);
+const backendUrl = 'https://fruitninjaapi.onrender.com'; // Replace with a specific endpoint if necessary
 
-  // Perform an HTTPS GET request to hit any backend api.
+const job = new CronJob('*/14 * * * *', function () {
+  console.log(`Attempting to keep server active`);
+
   https
     .get(backendUrl, (res) => {
       if (res.statusCode === 200) {
-        console.log('Server restarted');
+        console.log('Server is active');
       } else {
         console.error(
-          `failed to restart server with status code: ${res.statusCode}`
+          `Failed to reach server, status code: ${res.statusCode}`
         );
       }
     })
     .on('error', (err) => {
-      console.error('Error during Restart:', err.message);
+      console.error('Error during server ping:', err.message);
     });
-});
+}, null, true, 'America/Los_Angeles');
 
 // Export the cron job.
-module.exports = {
-  job,
-};
+module.exports = job;
