@@ -2,12 +2,9 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Room from './Lobby';
 import Game from './Game';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const App = () => {
-    const API_BASE_URL = process.env.VITE_API_BASE_URL;
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // Use import.meta.env for Vite env variables
     const [page, setPage] = useState('home');
     const [roomId, setRoomId] = useState('');
     const [userId, setUserId] = useState('');
