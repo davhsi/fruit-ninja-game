@@ -1,7 +1,7 @@
 const { CronJob } = require('cron');
 const https = require('https');
 
-const backendUrl = 'https://fruitninjaapi.onrender.com'; // Replace with a specific endpoint if necessary
+const backendUrl = 'https://fruitninjahsi.onrender.com'; // Replace with a specific endpoint if necessary
 
 const job = new CronJob('*/14 * * * *', function () {
   console.log(`Attempting to keep server active`);
