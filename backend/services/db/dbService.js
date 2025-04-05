@@ -5,4 +5,8 @@ const mongo = require("./mongoAdapter");
 
 const db = useDynamo ? dynamo : mongo;
 
-module.exports = db;
+module.exports = {
+  init: db.connect,
+  saveMatch: db.saveMatch,
+  getMatches: db.getMatches,
+};

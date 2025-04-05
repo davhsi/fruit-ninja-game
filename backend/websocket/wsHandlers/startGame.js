@@ -4,6 +4,8 @@ const endGame = require("./endGame");
 
 function handleStartGame(data, wss) {
   const { roomCode, duration } = data;
+  const startTime = new Date(); // 🕒 Record when game starts
+
   console.log(`🚀 Game started for room ${roomCode}, duration: ${duration}s`);
 
   const fruitInterval = setInterval(() => {
@@ -14,7 +16,7 @@ function handleStartGame(data, wss) {
 
   setTimeout(() => {
     clearInterval(fruitInterval);
-    endGame(roomCode, wss);
+    endGame(roomCode, duration, startTime, wss); // ✅ Pass startTime here
   }, duration * 1000);
 }
 
