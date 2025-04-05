@@ -1,39 +1,29 @@
-const WebSocket = require('ws');
-const { redisClient } = require('../redis/redisClient');
-const rooms = require('./rooms');
+// websocket/wsUtils.js
 
-// Broadcast a message to all clients in a specific room
-function broadcastToRoom(roomId, message) {
-    if (rooms[roomId]) {
-        rooms[roomId].forEach((client) => {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify(message));
-            }
-        });
+const WebSocket = require("ws");
+const rooms = require("./rooms");
+
+// 📡 Broadcast a message to all players in a room
+function broadcastToRoom(roomCode, message, wss) {
+  const roomPlayers = rooms[roomCode] || [];
+  roomPlayers.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(JSON.stringify(message));
     }
+  });
 }
 
-// Retrieve the scores for all users in a room from Redis
-async function getRoomScores(roomId) {
-    const keys = await redisClient.keys(`room:${roomId}:user:*`);
-    const scores = {};
+// 🍉 Generate a random fruit or bomb
+function generateRandomFruit() {
+  const fruitTypes = ["apple", "banana", "orange", "bomb"];
+  const type = fruitTypes[Math.floor(Math.random() * fruitTypes.length)];
+  const x = Math.floor(Math.random() * 500); // Random X position
+  const y = 0; // Start from the top
 
-    for (const key of keys) {
-        const userId = key.split(':')[3];
-        const score = await redisClient.get(key);
-        scores[userId] = parseInt(score, 10) || 0;
-    }
-
-    return scores;
+  return { type, x, y };
 }
 
-// Cleanup room data in Redis and remove it from in-memory storage
-async function cleanupRoom(roomId, rooms) {
-    await redisClient.del(`room:${roomId}:users`);
-    await redisClient.del(`room:${roomId}:size`);
-    await redisClient.del(`room:${roomId}:user:*`);
-    delete rooms[roomId];
-    console.log(`Room ${roomId} resources cleaned up.`);
-}
-
-module.exports = { broadcastToRoom, getRoomScores, cleanupRoom };
+module.exports = {
+  broadcastToRoom,
+  generateRandomFruit,
+};

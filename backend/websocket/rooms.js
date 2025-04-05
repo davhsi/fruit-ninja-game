@@ -1,4 +1,6 @@
-// rooms.js
-const rooms = {}; // This will store active WebSocket connections by room
+// websocket/rooms.js
+
+// Map<roomCode, Array<WebSocket>>
+const rooms = {};
 
 module.exports = rooms;
