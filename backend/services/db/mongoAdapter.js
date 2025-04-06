@@ -1,6 +1,8 @@
 // services/db/mongoAdapter.js
 const mongoose = require("mongoose");
 const Match = require("../../models/Match");
+const User = require("../../models/User");
+
 
 const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/fruit-ninja";
 
@@ -25,8 +27,18 @@ async function getMatches() {
   return await Match.find().sort({ startTime: -1 }).lean();
 }
 
+async function getUserByEmail(email) {
+  return await User.findOne({ email }).lean();
+}
+
+async function createUser(userData) {
+  return await User.create(userData);
+}
+
 module.exports = {
   connect,
   saveMatch,
   getMatches,
+  getUserByEmail,
+  createUser,
 };

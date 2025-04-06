@@ -7,6 +7,7 @@ const http = require("http");
 const setupWebSocket = require("./websocket/setupWebSocket");
 const authRoutes = require("./routes/authRoutes");
 const roomRoutes = require("./routes/roomRoutes");
+const matchRoutes = require("./routes/matchRoutes");
 
 const dbService = require("./services/db/dbService"); // ✅ Import DB service
 
@@ -18,6 +19,7 @@ app.use(express.json());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/room", roomRoutes);
+app.use("/api/matches", matchRoutes);
 
 // ✅ Create HTTP server for Express + WebSocket
 const server = http.createServer(app);

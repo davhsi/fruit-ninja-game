@@ -9,4 +9,6 @@ module.exports = {
   init: db.connect,
   saveMatch: db.saveMatch,
   getMatches: db.getMatches,
+  getUserByEmail: db.getUserByEmail,
+  createUser: db.createUser
 };
