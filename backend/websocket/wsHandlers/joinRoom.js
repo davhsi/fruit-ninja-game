@@ -10,6 +10,7 @@ function handleJoinRoom(ws, data, wss) {
 
   const { token, roomCode } = data;
 
+
   try {
     const user = jwt.verify(token, process.env.JWT_SECRET);
     const userId = user.id;
@@ -66,14 +67,18 @@ function handleJoinRoom(ws, data, wss) {
 
     // Log current players
     console.log("👥 Players in room", roomCode, rooms[roomCode].players.map(p => p.username));
+    const hostId = rooms[roomCode].players[0]?.id;
 
     // Send updated player list to everyone
     sendToRoom(roomCode, {
       type: "PLAYER_LIST",
-      payload: rooms[roomCode].players.map(p => ({
-        id: p.id,
-        username: p.username,
-      })),
+      payload: {
+        hostId,
+        players: rooms[roomCode].players.map(p => ({
+          id: p.id,
+          username: p.username,
+        })),
+      },
     });
 
   } catch (err) {

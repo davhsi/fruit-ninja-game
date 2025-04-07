@@ -1,6 +1,7 @@
 let socket = null;
 let pingInterval = null;
 let reconnectInterval = null;
+let reconnectAttempts = 0; // ✅ Global
 let messageListeners = [];
 
 const URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
@@ -13,9 +14,9 @@ export function connectSocket({ token, roomCode } = {}) {
 
   socket.onopen = () => {
     console.log("[WS] Connected ✅");
+    reconnectAttempts = 0;
     startHeartbeat();
 
-    // 🔥 Log & send JOIN_ROOM if data provided
     if (token && roomCode) {
       const joinPayload = {
         type: "JOIN_ROOM",
@@ -38,17 +39,28 @@ export function connectSocket({ token, roomCode } = {}) {
     console.warn("[WS] Disconnected ❌");
     stopHeartbeat();
 
+    // prevent spamming multiple reconnect intervals
     if (!reconnectInterval) {
       reconnectInterval = setInterval(() => {
-        console.log("[WS] Trying to reconnect...");
-        connectSocket({ token, roomCode }); // retry with same credentials
+        reconnectAttempts++;
+        if (reconnectAttempts > 10) {
+          console.warn("[WS] Too many reconnect attempts. Giving up.");
+          clearInterval(reconnectInterval);
+          reconnectInterval = null;
+          return;
+        }
+
+        console.log(`[WS] Reconnect attempt #${reconnectAttempts}...`);
+        connectSocket({ token, roomCode });
       }, 3000);
     }
   };
 
   socket.onerror = (err) => {
     console.error("[WS] Error:", err);
-    socket.close(); // Force reconnect via `onclose`
+    if (socket.readyState !== WebSocket.CLOSED) {
+      socket.close(); // force reconnect flow
+    }
   };
 
   socket.onmessage = (event) => {
@@ -74,7 +86,6 @@ export function sendMessage(message) {
 export function onMessage(callback) {
   messageListeners.push(callback);
   return () => {
-    // Cleanup
     messageListeners = messageListeners.filter((cb) => cb !== callback);
   };
 }
@@ -86,6 +97,11 @@ export function disconnectSocket() {
     socket = null;
   }
   messageListeners = [];
+  reconnectAttempts = 0;
+  if (reconnectInterval) {
+    clearInterval(reconnectInterval);
+    reconnectInterval = null;
+  }
 }
 
 function startHeartbeat() {
@@ -93,7 +109,7 @@ function startHeartbeat() {
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ type: "PING" }));
     }
-  }, 15000); // ping every 15s
+  }, 15000);
 }
 
 function stopHeartbeat() {

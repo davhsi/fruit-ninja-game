@@ -37,32 +37,37 @@ const Lobby = () => {
 
     const handleMessage = (data) => {
       console.log("[Lobby] Message received:", data);
-
+    
       switch (data.type) {
         case "PLAYER_LIST":
           if (isMounted) {
-            setPlayers(data.payload);
+            const { players } = data.payload;
+            setPlayers(players);
             setLoading(false);
           }
           break;
+    
         case "PLAYER_JOINED":
           if (isMounted) {
             setPlayers((prev) => [...prev, data.payload]);
           }
           break;
+    
         case "PLAYER_LEFT":
           if (isMounted) {
             setPlayers((prev) => prev.filter((p) => p.id !== data.payload));
           }
           break;
+    
         case "GAME_STARTED":
           navigate(`/game/${roomCode}`);
           break;
+    
         default:
           break;
       }
     };
-
+    
     // Ensure message listener is set after socket connects
     if (ws.readyState === WebSocket.OPEN) {
       joinRoom();
@@ -83,7 +88,8 @@ const Lobby = () => {
     };
   }, [roomCode, navigate]);
 
-  const isHost = players[0]?.id === user?.id;
+  // const isHost = players[0]?.id === user?.id;
+  const isHost = user?.id === players[0]?.id;
 
   const handleStartGame = () => {
     sendMessage({ type: "START_GAME", roomCode });
@@ -140,8 +146,8 @@ const Lobby = () => {
         </ul>
       </Card>
 
-      {isHost && (
-        <Button onClick={handleStartGame} className="mt-6">
+      {isHost && players.length > 1 && (
+        <Button className="mt-4 w-full" onClick={handleStartGame}>
           Start Game
         </Button>
       )}
