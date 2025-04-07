@@ -9,13 +9,13 @@ const updateScore = require("./wsHandlers/score");
 const handleDisconnect = require("./wsHandlers/disconnect");
 
 // ✅ Add this line to import the initializer
-const { initSendToRoom } = require("../utils/sendToRoom");
+// const { initSendToRoom } = require("../utils/sendToRoom");
 
 function setupWebSocket(server) {
   const wss = new WebSocket.Server({ server });
 
   // ✅ Initialize sendToRoom with wss
-  initSendToRoom(wss);
+  // initSendToRoom(wss);
 
   console.log("✅ WebSocket server initialized");
 

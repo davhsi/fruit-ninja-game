@@ -30,6 +30,9 @@ router.post("/register", async (req, res) => {
 
 // ✅ Login
 router.post("/login", async (req, res) => {
+  console.log("🚀 Login endpoint hit");
+  console.log("📦 req.body:", req.body); // ← add this line to debug
+
   const { email, password } = req.body;
 
   try {
@@ -45,5 +48,6 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ message: "Login failed", error: err.message });
   }
 });
+
 
 module.exports = router;

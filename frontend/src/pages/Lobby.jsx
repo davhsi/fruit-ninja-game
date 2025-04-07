@@ -23,21 +23,21 @@ const Lobby = () => {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return navigate("/login");
-  
+
     const userData = JSON.parse(localStorage.getItem("user"));
     setUser(userData);
-  
+
     let isMounted = true; // to prevent state updates on unmounted component
     const ws = connectSocket({ token, roomCode });
-  
+
     const joinRoom = () => {
       console.log("[Lobby] Sending JOIN_ROOM:", { roomCode, token });
       sendMessage({ type: "JOIN_ROOM", roomCode, token });
     };
-  
+
     const handleMessage = (data) => {
       console.log("[Lobby] Message received:", data);
-  
+
       switch (data.type) {
         case "PLAYER_LIST":
           if (isMounted) {
@@ -62,27 +62,26 @@ const Lobby = () => {
           break;
       }
     };
-  
+
     // Ensure message listener is set after socket connects
     if (ws.readyState === WebSocket.OPEN) {
       joinRoom();
     } else {
       ws.addEventListener("open", joinRoom);
     }
-  
+
     onMessage(handleMessage);
-  
+
     const fallbackTimer = setTimeout(() => {
       if (isMounted) setLoading(false);
     }, 5000);
-  
+
     return () => {
       isMounted = false;
       disconnectSocket();
       clearTimeout(fallbackTimer);
     };
   }, [roomCode, navigate]);
-  
 
   const isHost = players[0]?.id === user?.id;
 
@@ -109,8 +108,15 @@ const Lobby = () => {
 
       <div className="flex items-center space-x-2 mb-6">
         <p className="text-gray-500 text-sm">Room Code:</p>
-        <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded font-mono">{roomCode}</code>
-        <Button variant="ghost" size="icon" onClick={copyRoomCode} title="Copy room code">
+        <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded font-mono">
+          {roomCode}
+        </code>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={copyRoomCode}
+          title="Copy room code"
+        >
           <Copy className="h-4 w-4" />
         </Button>
       </div>
@@ -124,8 +130,11 @@ const Lobby = () => {
               className="bg-muted px-3 py-2 rounded flex justify-between items-center"
             >
               <span>{p.username}</span>
-              {p.id === user?.id && <span className="text-xs text-blue-500">(You)</span>}
-              {p.id === players[0]?.id && <span className="text-xs text-green-500">(Host)</span>}
+              <span className="text-xs text-muted-foreground">
+                {p.id === user?.id && "(You)"}
+                {p.id === players[0]?.id &&
+                  `${p.id === user?.id ? ", " : ""}(Host)`}
+              </span>
             </li>
           ))}
         </ul>

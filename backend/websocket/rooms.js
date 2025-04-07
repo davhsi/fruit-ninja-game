@@ -1,6 +1,4 @@
-// websocket/rooms.js
-
-// Map<roomCode, Array<WebSocket>>
+// Map<roomCode, Array<{ id, email, isHost, socket }> >
 const rooms = {};
 
 module.exports = rooms;
