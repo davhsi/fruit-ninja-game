@@ -8,8 +8,14 @@ const handleStartGame = require("./wsHandlers/startGame");
 const updateScore = require("./wsHandlers/score");
 const handleDisconnect = require("./wsHandlers/disconnect");
 
+// ✅ Add this line to import the initializer
+const { initSendToRoom } = require("../utils/sendToRoom");
+
 function setupWebSocket(server) {
   const wss = new WebSocket.Server({ server });
+
+  // ✅ Initialize sendToRoom with wss
+  initSendToRoom(wss);
 
   console.log("✅ WebSocket server initialized");
 
@@ -21,9 +27,15 @@ function setupWebSocket(server) {
         const data = JSON.parse(message);
 
         switch (data.type) {
-          case "JOIN_ROOM":
-            handleJoinRoom(ws, data);
+          case "PING":
+            ws.send(JSON.stringify({ type: "PONG" }));
             break;
+
+            case "JOIN_ROOM":
+              console.log("📩 Received JOIN_ROOM:", data);
+              handleJoinRoom(ws, data, wss); // ✅ pass wss here
+              break;
+            
 
           case "START_GAME":
             handleStartGame(data, wss);

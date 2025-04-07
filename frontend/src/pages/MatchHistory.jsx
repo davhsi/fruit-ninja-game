@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { socket } from "@/services/socket";
+import { connectSocket, sendMessage, onMessage, disconnectSocket } from "@/services/socket";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -13,18 +13,21 @@ const MatchHistory = () => {
     const user = JSON.parse(localStorage.getItem("user"));
     if (!token || !user) return navigate("/login");
 
-    socket.emit("get-match-history", { token });
+    const ws = connectSocket();
 
-    const handleHistory = ({ type, data }) => {
-      if (type === "MATCH_HISTORY") {
-        setHistory(data);
-      }
+    ws.onopen = () => {
+      console.log("[WS] Connected for match history");
+      sendMessage({ type: "GET_MATCH_HISTORY", token });
     };
 
-    socket.on("message", handleHistory);
+    onMessage((data) => {
+      if (data.type === "MATCH_HISTORY") {
+        setHistory(data.data);
+      }
+    });
 
     return () => {
-      socket.off("message", handleHistory);
+      disconnectSocket();
     };
   }, [navigate]);
 

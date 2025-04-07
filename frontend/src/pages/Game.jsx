@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { socket } from "@/services/socket";
+import {
+  connectSocket,
+  sendMessage,
+  onMessage,
+  disconnectSocket,
+} from "@/services/socket";
 import LeaderboardPanel from "@/components/LeaderboardPanel";
 
 const Game = () => {
@@ -9,11 +14,11 @@ const Game = () => {
   const canvasRef = useRef(null);
 
   const [score, setScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(60); // 60s timer
+  const [timeLeft, setTimeLeft] = useState(60);
   const [leaderboard, setLeaderboard] = useState([]);
   const [fruits, setFruits] = useState([]);
 
-  // Add fruits at intervals
+  // 🍉 Fruit Spawning
   useEffect(() => {
     const canvas = canvasRef.current;
     const spawnInterval = setInterval(() => {
@@ -30,7 +35,7 @@ const Game = () => {
     return () => clearInterval(spawnInterval);
   }, []);
 
-  // Draw and update fruits
+  // 🎮 Drawing Loop
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
@@ -61,6 +66,7 @@ const Game = () => {
     draw();
   }, [fruits]);
 
+  // 🥷 Fruit Slicing
   const handleSlice = (e) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -74,7 +80,7 @@ const Game = () => {
       const dy = fruit.y - y;
       if (Math.sqrt(dx ** 2 + dy ** 2) < fruit.radius + 10) {
         hit = true;
-        return { ...fruit, y: canvas.height + 100 }; // mark as "sliced"
+        return { ...fruit, y: canvas.height + 100 };
       }
       return fruit;
     });
@@ -82,44 +88,54 @@ const Game = () => {
     if (hit) {
       const newScore = score + 1;
       setScore(newScore);
-      socket.emit("update-score", { roomCode, score: newScore });
+      sendMessage({
+        type: "UPDATE_SCORE",
+        payload: { roomCode, score: newScore },
+      });
     }
 
     setFruits(updated);
   };
 
+  // ⏱️ Game Logic & WS Init
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"));
     if (!user) return navigate("/login");
-  
-    socket.emit("join-game", { roomCode });
-  
-    socket.on("message", (data) => {
+
+    const ws = connectSocket();
+
+    // Join game
+    ws.onopen = () => {
+      sendMessage({ type: "JOIN_GAME", payload: { roomCode } });
+    };
+
+    // Incoming messages
+    onMessage((data) => {
       if (data.type === "UPDATE_SCORE") {
         setLeaderboard(data.payload.scores);
       }
-  
+
       if (data.type === "END_GAME") {
         navigate(`/leaderboard/${roomCode}`);
       }
     });
-  
+
+    // Timer
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev === 1) {
           clearInterval(timer);
-          socket.emit("end-game", { roomCode }); // if frontend ends it
+          sendMessage({ type: "END_GAME", payload: { roomCode } });
         }
         return prev - 1;
       });
     }, 1000);
-  
+
     return () => {
-      socket.off("message");
       clearInterval(timer);
+      disconnectSocket();
     };
   }, [roomCode, navigate]);
-  
 
   return (
     <div className="flex min-h-screen bg-gray-100">

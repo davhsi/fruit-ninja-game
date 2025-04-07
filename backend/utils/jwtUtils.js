@@ -1,7 +1,9 @@
 // backend/utils/jwtUtils.js
 const jwt = require("jsonwebtoken");
+require("dotenv").config();
+const JWT_SECRET = process.env.JWT_SECRET;
 
-const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
+console.log("🧪 jwtUtils: JWT_SECRET =", process.env.JWT_SECRET);
 
 exports.signToken = (payload) => jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
 

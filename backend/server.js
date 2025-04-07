@@ -3,6 +3,8 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const http = require("http");
+dotenv.config();
+console.log("🧪 JWT_SECRET:", process.env.JWT_SECRET);
 
 const setupWebSocket = require("./websocket/setupWebSocket");
 const authRoutes = require("./routes/authRoutes");
@@ -11,7 +13,6 @@ const matchRoutes = require("./routes/matchRoutes");
 
 const dbService = require("./services/db/dbService"); // ✅ Import DB service
 
-dotenv.config();
 
 const app = express();
 app.use(cors());

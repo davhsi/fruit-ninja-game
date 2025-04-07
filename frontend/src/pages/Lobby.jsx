@@ -2,14 +2,19 @@ import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useSocket } from "../contexts/SocketContext";
-import { toast } from "sonner"; // if you're using a toast library
-import { Copy } from "lucide-react"; // optional icon
+import { toast } from "sonner";
+import { Copy } from "lucide-react";
+
+import {
+  connectSocket,
+  sendMessage,
+  onMessage,
+  disconnectSocket,
+} from "@/services/socket";
 
 const Lobby = () => {
   const { roomCode } = useParams();
   const navigate = useNavigate();
-  const socket = useSocket();
 
   const [players, setPlayers] = useState([]);
   const [user, setUser] = useState(null);
@@ -22,45 +27,67 @@ const Lobby = () => {
     const userData = JSON.parse(localStorage.getItem("user"));
     setUser(userData);
   
-    if (!socket) return;
+    let isMounted = true; // to prevent state updates on unmounted component
+    const ws = connectSocket({ token, roomCode });
   
-    socket.emit("join-room", { roomCode, token });
+    const joinRoom = () => {
+      console.log("[Lobby] Sending JOIN_ROOM:", { roomCode, token });
+      sendMessage({ type: "JOIN_ROOM", roomCode, token });
+    };
   
-    socket.on("message", (data) => {
+    const handleMessage = (data) => {
+      console.log("[Lobby] Message received:", data);
+  
       switch (data.type) {
         case "PLAYER_LIST":
-          setPlayers(data.payload);
-          setLoading(false);
+          if (isMounted) {
+            setPlayers(data.payload);
+            setLoading(false);
+          }
           break;
-  
         case "PLAYER_JOINED":
-          setPlayers((prev) => [...prev, data.payload]);
+          if (isMounted) {
+            setPlayers((prev) => [...prev, data.payload]);
+          }
           break;
-  
         case "PLAYER_LEFT":
-          setPlayers((prev) => prev.filter((p) => p.id !== data.payload));
+          if (isMounted) {
+            setPlayers((prev) => prev.filter((p) => p.id !== data.payload));
+          }
           break;
-  
         case "GAME_STARTED":
           navigate(`/game/${roomCode}`);
           break;
-  
         default:
           break;
       }
-    });
+    };
+  
+    // Ensure message listener is set after socket connects
+    if (ws.readyState === WebSocket.OPEN) {
+      joinRoom();
+    } else {
+      ws.addEventListener("open", joinRoom);
+    }
+  
+    onMessage(handleMessage);
+  
+    const fallbackTimer = setTimeout(() => {
+      if (isMounted) setLoading(false);
+    }, 5000);
   
     return () => {
-      socket.emit("leave-room", { roomCode });
-      socket.off("message");
+      isMounted = false;
+      disconnectSocket();
+      clearTimeout(fallbackTimer);
     };
-  }, [socket, roomCode, navigate]);
+  }, [roomCode, navigate]);
   
 
   const isHost = players[0]?.id === user?.id;
 
   const handleStartGame = () => {
-    socket.emit("start-game", { roomCode });
+    sendMessage({ type: "START_GAME", roomCode });
   };
 
   const copyRoomCode = async () => {
@@ -83,12 +110,7 @@ const Lobby = () => {
       <div className="flex items-center space-x-2 mb-6">
         <p className="text-gray-500 text-sm">Room Code:</p>
         <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded font-mono">{roomCode}</code>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={copyRoomCode}
-          title="Copy room code"
-        >
+        <Button variant="ghost" size="icon" onClick={copyRoomCode} title="Copy room code">
           <Copy className="h-4 w-4" />
         </Button>
       </div>

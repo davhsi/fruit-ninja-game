@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { socket } from "@/services/socket";
+import { connectSocket, sendMessage, onMessage, disconnectSocket } from "@/services/socket";
 import { Button } from "@/components/ui/button";
 
 const Leaderboard = () => {
@@ -11,21 +11,25 @@ const Leaderboard = () => {
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user"));
     if (!user) return navigate("/login");
-  
-    socket.emit("get-final-scores", { roomCode });
-  
-    socket.on("message", (data) => {
+
+    const ws = connectSocket();
+
+    ws.onopen = () => {
+      console.log("[WS] Connected to leaderboard");
+      sendMessage({ type: "GET_FINAL_SCORES", roomCode });
+    };
+
+    onMessage((data) => {
       if (data.type === "FINAL_SCORES") {
         const sorted = [...data.payload].sort((a, b) => b.score - a.score);
         setFinalScores(sorted);
       }
     });
-  
+
     return () => {
-      socket.off("message");
+      disconnectSocket();
     };
   }, [roomCode, navigate]);
-  
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
