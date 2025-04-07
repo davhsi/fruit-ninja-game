@@ -19,13 +19,26 @@ const Lobby = () => {
   const [players, setPlayers] = useState([]);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [hostId, setHostId] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return navigate("/login");
 
-    const userData = JSON.parse(localStorage.getItem("user"));
-    setUser(userData);
+    const storedUser = localStorage.getItem("user");
+    if (!storedUser) {
+      toast.error("User not found. Please log in again.");
+      return navigate("/login");
+    }
+
+    try {
+      const userData = JSON.parse(storedUser);
+      console.log("[Lobby] 🚀 Parsed user:", userData); // debug
+      setUser(userData);
+    } catch (err) {
+      toast.error("Corrupted user data.");
+      return navigate("/login");
+    }
 
     let isMounted = true; // to prevent state updates on unmounted component
     const ws = connectSocket({ token, roomCode });
@@ -37,37 +50,38 @@ const Lobby = () => {
 
     const handleMessage = (data) => {
       console.log("[Lobby] Message received:", data);
-    
+
       switch (data.type) {
         case "PLAYER_LIST":
           if (isMounted) {
-            const { players } = data.payload;
+            const { players, hostId } = data.payload;
             setPlayers(players);
+            setHostId(hostId);
             setLoading(false);
           }
           break;
-    
+
         case "PLAYER_JOINED":
           if (isMounted) {
             setPlayers((prev) => [...prev, data.payload]);
           }
           break;
-    
+
         case "PLAYER_LEFT":
           if (isMounted) {
             setPlayers((prev) => prev.filter((p) => p.id !== data.payload));
           }
           break;
-    
+
         case "GAME_STARTED":
           navigate(`/game/${roomCode}`);
           break;
-    
+
         default:
           break;
       }
     };
-    
+
     // Ensure message listener is set after socket connects
     if (ws.readyState === WebSocket.OPEN) {
       joinRoom();
@@ -88,8 +102,10 @@ const Lobby = () => {
     };
   }, [roomCode, navigate]);
 
-  // const isHost = players[0]?.id === user?.id;
-  const isHost = user?.id === players[0]?.id;
+  console.log("[Lobby] 🔍 user.id:", user?._id);
+  console.log("[Lobby] 🏠 hostId:", hostId);
+
+  const isHost = user?._id === hostId;
 
   const handleStartGame = () => {
     sendMessage({ type: "START_GAME", roomCode });
@@ -137,9 +153,8 @@ const Lobby = () => {
             >
               <span>{p.username}</span>
               <span className="text-xs text-muted-foreground">
-                {p.id === user?.id && "(You)"}
-                {p.id === players[0]?.id &&
-                  `${p.id === user?.id ? ", " : ""}(Host)`}
+              {p.id === user?._id && "(You)"}
+              {p.id === hostId && `${p.id === user?._id ? ", " : ""}(Host)`}
               </span>
             </li>
           ))}
