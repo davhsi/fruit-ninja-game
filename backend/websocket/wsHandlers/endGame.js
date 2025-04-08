@@ -1,21 +1,23 @@
 const { broadcastToRoom } = require("../wsUtils");
 const redisClient = require("../../redis/redisClient");
 const rooms = require("../rooms");
-const Match = require("../../models/Match");
 const db = require("../../services/db/dbService");
 
-
 async function endGame(roomCode, duration, startTime, wss) {
-  const roomPlayers = rooms[roomCode] || [];
+  const roomPlayers = Array.isArray(rooms[roomCode]) ? rooms[roomCode] : [];
   const leaderboard = [];
   const endTime = new Date();
 
-  // Close all WebSocket connections
-  for (let ws of roomPlayers) ws.close();
+  // ✅ Close all player WebSockets
+  for (let player of roomPlayers) {
+    if (player.socket && player.socket.readyState === 1) {
+      player.socket.close();
+    }
+  }
 
-  // Gather scores from Redis
-  for (let client of roomPlayers) {
-    const userId = client.userId;
+  // ✅ Gather scores from Redis
+  for (let player of roomPlayers) {
+    const userId = player.id;
     if (userId) {
       const key = `score:${roomCode}:${userId}`;
       const score = await redisClient.get(key) || 0;
@@ -36,7 +38,7 @@ async function endGame(roomCode, duration, startTime, wss) {
     endTime,
     winner,
   });
-  
+
   // Notify players
   broadcastToRoom(roomCode, {
     type: "END_GAME",

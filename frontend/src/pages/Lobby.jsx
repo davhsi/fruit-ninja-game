@@ -20,6 +20,7 @@ const Lobby = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hostId, setHostId] = useState(null);
+  const [duration, setDuration] = useState(60); // default to 60 seconds
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -33,14 +34,14 @@ const Lobby = () => {
 
     try {
       const userData = JSON.parse(storedUser);
-      console.log("[Lobby] 🚀 Parsed user:", userData); // debug
+      console.log("[Lobby] 🚀 Parsed user:", userData);
       setUser(userData);
     } catch (err) {
       toast.error("Corrupted user data.");
       return navigate("/login");
     }
 
-    let isMounted = true; // to prevent state updates on unmounted component
+    let isMounted = true;
     const ws = connectSocket({ token, roomCode });
 
     const joinRoom = () => {
@@ -82,7 +83,6 @@ const Lobby = () => {
       }
     };
 
-    // Ensure message listener is set after socket connects
     if (ws.readyState === WebSocket.OPEN) {
       joinRoom();
     } else {
@@ -102,13 +102,10 @@ const Lobby = () => {
     };
   }, [roomCode, navigate]);
 
-  console.log("[Lobby] 🔍 user.id:", user?._id);
-  console.log("[Lobby] 🏠 hostId:", hostId);
-
   const isHost = user?._id === hostId;
 
   const handleStartGame = () => {
-    sendMessage({ type: "START_GAME", roomCode });
+    sendMessage({ type: "START_GAME", roomCode, duration });
   };
 
   const copyRoomCode = async () => {
@@ -153,8 +150,8 @@ const Lobby = () => {
             >
               <span>{p.username}</span>
               <span className="text-xs text-muted-foreground">
-              {p.id === user?._id && "(You)"}
-              {p.id === hostId && `${p.id === user?._id ? ", " : ""}(Host)`}
+                {p.id === user?._id && "(You)"}
+                {p.id === hostId && `${p.id === user?._id ? ", " : ""}(Host)`}
               </span>
             </li>
           ))}
@@ -162,9 +159,24 @@ const Lobby = () => {
       </Card>
 
       {isHost && players.length > 1 && (
-        <Button className="mt-4 w-full" onClick={handleStartGame}>
-          Start Game
-        </Button>
+        <div className="w-full max-w-md mt-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium">Select Duration:</label>
+            <select
+              value={duration}
+              onChange={(e) => setDuration(Number(e.target.value))}
+              className="border rounded px-2 py-1 bg-background"
+            >
+              <option value={30}>30 seconds</option>
+              <option value={60}>60 seconds</option>
+              <option value={90}>90 seconds</option>
+            </select>
+          </div>
+
+          <Button className="w-full" onClick={handleStartGame}>
+            Start Game
+          </Button>
+        </div>
       )}
     </div>
   );

@@ -4,11 +4,13 @@ const WebSocket = require("ws");
 const rooms = require("./rooms");
 
 // 📡 Broadcast a message to all players in a room
+
 function broadcastToRoom(roomCode, message, wss) {
-  const roomPlayers = rooms[roomCode] || [];
+  const roomPlayers = Array.isArray(rooms[roomCode]) ? rooms[roomCode] : [];
+
   roomPlayers.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(message));
+    if (client.socket && client.socket.readyState === 1) {
+      client.socket.send(JSON.stringify(message));
     }
   });
 }
