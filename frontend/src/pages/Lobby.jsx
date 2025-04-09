@@ -20,21 +20,20 @@ const Lobby = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hostId, setHostId] = useState(null);
-  const [duration, setDuration] = useState(60); // default to 60 seconds
+  const [duration, setDuration] = useState(60);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) return navigate("/login");
-
     const storedUser = localStorage.getItem("user");
-    if (!storedUser) {
-      toast.error("User not found. Please log in again.");
+
+    if (!token || !storedUser) {
+      toast.error("Please log in again.");
       return navigate("/login");
     }
 
+    let userData;
     try {
-      const userData = JSON.parse(storedUser);
-      console.log("[Lobby] 🚀 Parsed user:", userData);
+      userData = JSON.parse(storedUser);
       setUser(userData);
     } catch (err) {
       toast.error("Corrupted user data.");
@@ -44,67 +43,53 @@ const Lobby = () => {
     let isMounted = true;
     const ws = connectSocket({ token, roomCode });
 
-    const joinRoom = () => {
-      console.log("[Lobby] Sending JOIN_ROOM:", { roomCode, token });
-      sendMessage({ type: "JOIN_ROOM", roomCode, token });
-    };
-
     const handleMessage = (data) => {
-      console.log("[Lobby] Message received:", data);
+      if (!isMounted) return;
+      console.log("[Lobby] ⬇️ Message received:", data);
 
       switch (data.type) {
-        case "PLAYER_LIST":
-          if (isMounted) {
-            const { players, hostId } = data.payload;
-            setPlayers(players);
-            setHostId(hostId);
-            setLoading(false);
-          }
-          break;
-
-        case "PLAYER_JOINED":
-          if (isMounted) {
-            setPlayers((prev) => [...prev, data.payload]);
-          }
-          break;
-
-        case "PLAYER_LEFT":
-          if (isMounted) {
-            setPlayers((prev) => prev.filter((p) => p.id !== data.payload));
-          }
-          break;
-
         case "GAME_STARTED":
+          console.log("[Lobby] 🎮 GAME_STARTED received. Navigating...");
           navigate(`/game/${roomCode}`);
           break;
 
-        default:
+        case "PLAYER_LIST":
+          setPlayers(data.payload.players);
+          setHostId(data.payload.hostId);
+          setLoading(false);
           break;
+
+        case "PLAYER_JOINED":
+          setPlayers((prev) => [...prev, data.payload]);
+          break;
+
+        case "PLAYER_LEFT":
+          setPlayers((prev) => prev.filter((p) => p.id !== data.payload));
+          break;
+
+        case "PONG":
+          console.log("🏓 PONG received from server.");
+          break;
+
+        default:
+          console.warn("Unhandled WS message type:", data.type);
       }
     };
 
-    if (ws.readyState === WebSocket.OPEN) {
-      joinRoom();
-    } else {
-      ws.addEventListener("open", joinRoom);
-    }
-
-    onMessage(handleMessage);
-
-    const fallbackTimer = setTimeout(() => {
-      if (isMounted) setLoading(false);
-    }, 5000);
+    const removeListener = onMessage(handleMessage); // ✅ track it for cleanup
+    sendMessage({ type: "JOIN_ROOM", token, roomCode }); // 🔥 rejoin room
 
     return () => {
       isMounted = false;
-      disconnectSocket();
-      clearTimeout(fallbackTimer);
+      removeListener(); // ✅ cleanup listener only for this component
+      // disconnectSocket(); // optional: leave socket alive for reuse
     };
   }, [roomCode, navigate]);
 
   const isHost = user?._id === hostId;
 
   const handleStartGame = () => {
+    console.log("[Lobby] 🔼 Sending START_GAME event...");
     sendMessage({ type: "START_GAME", roomCode, duration });
   };
 
@@ -130,12 +115,7 @@ const Lobby = () => {
         <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded font-mono">
           {roomCode}
         </code>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={copyRoomCode}
-          title="Copy room code"
-        >
+        <Button variant="ghost" size="icon" onClick={copyRoomCode}>
           <Copy className="h-4 w-4" />
         </Button>
       </div>

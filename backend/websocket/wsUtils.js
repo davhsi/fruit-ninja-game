@@ -3,17 +3,6 @@
 const WebSocket = require("ws");
 const rooms = require("./rooms");
 
-// 📡 Broadcast a message to all players in a room
-
-function broadcastToRoom(roomCode, message, wss) {
-  const roomPlayers = Array.isArray(rooms[roomCode]) ? rooms[roomCode] : [];
-
-  roomPlayers.forEach((client) => {
-    if (client.socket && client.socket.readyState === 1) {
-      client.socket.send(JSON.stringify(message));
-    }
-  });
-}
 
 // 🍉 Generate a random fruit or bomb
 function generateRandomFruit() {
@@ -26,6 +15,5 @@ function generateRandomFruit() {
 }
 
 module.exports = {
-  broadcastToRoom,
   generateRandomFruit,
 };

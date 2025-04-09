@@ -25,20 +25,25 @@ function setupWebSocket(server) {
     ws.on("message", async (message) => {
       try {
         const data = JSON.parse(message);
+        console.log("📨 Received message type:", data.type);
 
         switch (data.type) {
+          case "PING_DEBUG":
+            console.log("📬 GOT PING_DEBUG from frontend:", payload);
+            break;
+
           case "PING":
+            console.log("💓 Received PING");
             ws.send(JSON.stringify({ type: "PONG" }));
             break;
 
-            case "JOIN_ROOM":
-              console.log("📩 Received JOIN_ROOM:", data);
-              handleJoinRoom(ws, data, wss); // ✅ pass wss here
-              break;
-            
+          case "JOIN_ROOM":
+            console.log("📩 Received JOIN_ROOM:", data);
+            handleJoinRoom(ws, data, wss); // ✅ pass wss here
+            break;
 
           case "START_GAME":
-            handleStartGame(data, wss);
+            handleStartGame(data, wss, ws);
             break;
 
           case "HIT_FRUIT":

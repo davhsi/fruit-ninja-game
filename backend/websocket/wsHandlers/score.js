@@ -1,10 +1,31 @@
-// wsHandlers/score.js
-const redisClient = require("../../redis/redisClient");
+// scores.js
+const scores = {}; // { [roomCode]: { [userId]: score } }
 
-async function updateScore(roomCode, userId, scoreDelta) {
-  const key = `score:${roomCode}:${userId}`;
-  await redisClient.incrby(key, scoreDelta);
-  console.log(`🧮 Score updated for ${userId} in room ${roomCode}: ${scoreDelta}`);
+function initRoomScores(roomCode) {
+  scores[roomCode] = {};
 }
 
-module.exports = updateScore;
+function updateScore(roomCode, userId, delta) {
+  if (!scores[roomCode]) scores[roomCode] = {};
+  scores[roomCode][userId] = (scores[roomCode][userId] || 0) + delta;
+}
+
+function getScore(roomCode, userId) {
+  return scores[roomCode]?.[userId] || 0;
+}
+
+function getAllScores(roomCode) {
+  return scores[roomCode] || {};
+}
+
+function clearScores(roomCode) {
+  delete scores[roomCode];
+}
+
+module.exports = {
+  initRoomScores,
+  updateScore,
+  getScore,
+  getAllScores,
+  clearScores,
+};

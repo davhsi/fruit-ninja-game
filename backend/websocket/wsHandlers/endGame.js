@@ -1,8 +1,9 @@
-const { broadcastToRoom } = require("../wsUtils");
-const redisClient = require("../../redis/redisClient");
+
+// websocket/wsHandlers/endGame.js
 const rooms = require("../rooms");
 const db = require("../../services/db/dbService");
-
+const scores = require("./score");
+const { sendToRoom } = require("../../utils/sendToRoom");
 async function endGame(roomCode, duration, startTime, wss) {
   const roomPlayers = Array.isArray(rooms[roomCode]) ? rooms[roomCode] : [];
   const leaderboard = [];
@@ -15,13 +16,12 @@ async function endGame(roomCode, duration, startTime, wss) {
     }
   }
 
-  // ✅ Gather scores from Redis
+  // ✅ Gather scores from in-memory
   for (let player of roomPlayers) {
     const userId = player.id;
     if (userId) {
-      const key = `score:${roomCode}:${userId}`;
-      const score = await redisClient.get(key) || 0;
-      leaderboard.push({ userId, score: parseInt(score) });
+      const score = scores.getScore(roomCode, userId) || 0;
+      leaderboard.push({ userId, score });
     }
   }
 
@@ -40,10 +40,14 @@ async function endGame(roomCode, duration, startTime, wss) {
   });
 
   // Notify players
-  broadcastToRoom(roomCode, {
-    type: "END_GAME",
-    payload: { leaderboard },
-  }, wss);
+  sendToRoom(
+    roomCode,
+    {
+      type: "END_GAME",
+      payload: { leaderboard },
+    },
+    wss
+  );
 
   console.log("🏁 Game Over. Final leaderboard:", leaderboard);
 }

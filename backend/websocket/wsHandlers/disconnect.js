@@ -1,5 +1,4 @@
 // websocket/wsHandlers/disconnect.js
-const redisClient = require("../../redis/redisClient");
 const rooms = require("../rooms");
 
 function handleDisconnect(socket, wss) {
@@ -8,25 +7,24 @@ function handleDisconnect(socket, wss) {
 
   console.log(`⚠️ Player ${userId} disconnected from room ${roomId}`);
 
-  redisClient.hget(`room:${roomId}:players`, userId, (err, playerData) => {
-    if (playerData) {
-      const player = JSON.parse(playerData);
-      player.active = false;
+  const roomPlayers = rooms[roomId] || [];
+  const updatedPlayers = roomPlayers.map((client) => {
+    if (client.id === userId) {
+      return { ...client, active: false };
+    }
+    return client;
+  });
 
-      redisClient.hset(`room:${roomId}:players`, userId, JSON.stringify(player));
+  rooms[roomId] = updatedPlayers;
 
-      // Broadcast disconnection to room
-      const roomPlayers = rooms[roomId] || [];
-      roomPlayers.forEach((client) => {
-        if (client.readyState === 1 && client.roomId === roomId) {
-          client.send(
-            JSON.stringify({
-              type: "player_disconnected",
-              userId,
-            })
-          );
-        }
-      });
+  updatedPlayers.forEach((client) => {
+    if (client.socket && client.socket.readyState === 1) {
+      client.socket.send(
+        JSON.stringify({
+          type: "player_disconnected",
+          userId,
+        })
+      );
     }
   });
 }

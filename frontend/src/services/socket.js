@@ -1,32 +1,27 @@
 let socket = null;
 let pingInterval = null;
 let reconnectInterval = null;
-let reconnectAttempts = 0; // ✅ Global
+let reconnectAttempts = 0;
 let messageListeners = [];
 
 const URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
 const WS_URL = URL.replace(/^http/, "ws");
 
 export function connectSocket({ token, roomCode } = {}) {
-  if (socket && socket.readyState === WebSocket.OPEN) return socket;
+  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+    console.log("[WS] ✅ Reusing existing socket");
+    return socket;
+  }
 
   socket = new WebSocket(`${WS_URL}/ws`);
 
   socket.onopen = () => {
-    console.log("[WS] Connected ✅");
+    console.log("[WS] 🔌 Connected");
     reconnectAttempts = 0;
     startHeartbeat();
 
     if (token && roomCode) {
-      const joinPayload = {
-        type: "JOIN_ROOM",
-        token,
-        roomCode,
-      };
-      console.log("📤 Sending JOIN_ROOM:", joinPayload);
-      socket.send(JSON.stringify(joinPayload));
-    } else {
-      console.warn("⚠️ No token or roomCode provided on connect.");
+      sendMessage({ type: "JOIN_ROOM", token, roomCode });
     }
 
     if (reconnectInterval) {
@@ -36,39 +31,39 @@ export function connectSocket({ token, roomCode } = {}) {
   };
 
   socket.onclose = () => {
-    console.warn("[WS] Disconnected ❌");
+    console.warn("[WS] ❌ Disconnected");
     stopHeartbeat();
 
-    // prevent spamming multiple reconnect intervals
     if (!reconnectInterval) {
       reconnectInterval = setInterval(() => {
         reconnectAttempts++;
         if (reconnectAttempts > 10) {
-          console.warn("[WS] Too many reconnect attempts. Giving up.");
+          console.warn("[WS] 🚫 Too many reconnect attempts. Giving up.");
           clearInterval(reconnectInterval);
           reconnectInterval = null;
           return;
         }
 
-        console.log(`[WS] Reconnect attempt #${reconnectAttempts}...`);
+        console.log(`[WS] 🔄 Attempting reconnect #${reconnectAttempts}`);
         connectSocket({ token, roomCode });
       }, 3000);
     }
   };
 
   socket.onerror = (err) => {
-    console.error("[WS] Error:", err);
+    console.error("[WS] 💥 Error:", err);
     if (socket.readyState !== WebSocket.CLOSED) {
-      socket.close(); // force reconnect flow
+      socket.close(); // force reconnect
     }
   };
 
   socket.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
+      console.log("🔔 Incoming:", data?.type, data); // GLOBAL message log
       messageListeners.forEach((cb) => cb(data));
     } catch (err) {
-      console.error("[WS] Message parse error:", err);
+      console.error("[WS] ❌ Failed to parse message:", err);
     }
   };
 
@@ -76,15 +71,19 @@ export function connectSocket({ token, roomCode } = {}) {
 }
 
 export function sendMessage(message) {
-  if (socket && socket.readyState === WebSocket.OPEN) {
+  if (socket?.readyState === WebSocket.OPEN) {
+    console.log("[WS] 🔼 Sending:", message?.type, message);
     socket.send(JSON.stringify(message));
   } else {
-    console.warn("[WS] Can't send, not connected");
+    console.warn("[WS] ❌ Cannot send, socket not open:", message?.type);
   }
 }
 
 export function onMessage(callback) {
-  messageListeners.push(callback);
+  if (!messageListeners.includes(callback)) {
+    messageListeners.push(callback);
+  }
+
   return () => {
     messageListeners = messageListeners.filter((cb) => cb !== callback);
   };
@@ -96,20 +95,28 @@ export function disconnectSocket() {
     socket.close();
     socket = null;
   }
+
   messageListeners = [];
   reconnectAttempts = 0;
+
   if (reconnectInterval) {
     clearInterval(reconnectInterval);
     reconnectInterval = null;
   }
 }
 
+export function getSocket() {
+  return socket;
+}
+
 function startHeartbeat() {
+  if (pingInterval) clearInterval(pingInterval);
   pingInterval = setInterval(() => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
+    if (socket?.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ type: "PING" }));
+      console.log("[WS] 💓 Sent heartbeat PING");
     }
-  }, 15000);
+  }, 15000); // every 15s
 }
 
 function stopHeartbeat() {

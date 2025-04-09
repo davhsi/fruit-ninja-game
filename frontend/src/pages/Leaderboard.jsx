@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { connectSocket, sendMessage, onMessage, disconnectSocket } from "@/services/socket";
+import {
+  connectSocket,
+  sendMessage,
+  onMessage,
+  disconnectSocket,
+} from "@/services/socket";
 import { Button } from "@/components/ui/button";
 
 const Leaderboard = () => {
@@ -31,20 +36,35 @@ const Leaderboard = () => {
     };
   }, [roomCode, navigate]);
 
+  const getMedalEmoji = (index) => {
+    if (index === 0) return "🥇";
+    if (index === 1) return "🥈";
+    if (index === 2) return "🥉";
+    return "";
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
       <h1 className="text-3xl font-bold mb-6">🏆 Final Leaderboard</h1>
 
       <div className="bg-white shadow rounded-lg p-6 w-full max-w-md">
         <ol className="space-y-2">
-          {finalScores.map((player, index) => (
-            <li key={player.id} className="flex justify-between items-center">
-              <span className="font-semibold">
-                {index + 1}. {player.username}
-              </span>
-              <span className="text-blue-600 font-bold">{player.score}</span>
-            </li>
-          ))}
+          {finalScores.length === 0 ? (
+            <p className="text-gray-500 text-center">No scores available.</p>
+          ) : (
+            finalScores.map((player, index) => (
+              <li
+                key={player.id || index}
+                className="flex justify-between items-center"
+              >
+                <span className="font-semibold">
+                  {getMedalEmoji(index)} {index + 1}.{" "}
+                  {player.username || "Anonymous"}
+                </span>
+                <span className="text-blue-600 font-bold">{player.score}</span>
+              </li>
+            ))
+          )}
         </ol>
       </div>
 

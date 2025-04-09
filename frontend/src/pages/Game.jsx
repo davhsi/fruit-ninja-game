@@ -18,109 +18,60 @@ const Game = () => {
   const [leaderboard, setLeaderboard] = useState([]);
   const [fruits, setFruits] = useState([]);
 
-  // 🍉 Fruit Spawning
+  const [gameStarted, setGameStarted] = useState(false);
+  const [gameDuration, setGameDuration] = useState(60);
+
+  const user = JSON.parse(localStorage.getItem("user"));
+  const userId = user?.id;
+
+  // 🎮 WS + Game Logic
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const spawnInterval = setInterval(() => {
-      const fruit = {
-        x: Math.random() * canvas.width,
-        y: 0,
-        radius: 25,
-        speed: 4 + Math.random() * 3,
-        color: `hsl(${Math.random() * 360}, 100%, 50%)`,
-      };
-      setFruits((prev) => [...prev, fruit]);
-    }, 1000);
-
-    return () => clearInterval(spawnInterval);
-  }, []);
-
-  // 🎮 Drawing Loop
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      setFruits((prevFruits) =>
-        prevFruits
-          .map((fruit) => ({
-            ...fruit,
-            y: fruit.y + fruit.speed,
-          }))
-          .filter((fruit) => fruit.y < canvas.height)
-      );
-
-      fruits.forEach((fruit) => {
-        ctx.beginPath();
-        ctx.arc(fruit.x, fruit.y, fruit.radius, 0, Math.PI * 2);
-        ctx.fillStyle = fruit.color;
-        ctx.fill();
-        ctx.closePath();
-      });
-
-      requestAnimationFrame(draw);
-    };
-
-    draw();
-  }, [fruits]);
-
-  // 🥷 Fruit Slicing
-  const handleSlice = (e) => {
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    let hit = false;
-
-    const updated = fruits.map((fruit) => {
-      const dx = fruit.x - x;
-      const dy = fruit.y - y;
-      if (Math.sqrt(dx ** 2 + dy ** 2) < fruit.radius + 10) {
-        hit = true;
-        return { ...fruit, y: canvas.height + 100 };
-      }
-      return fruit;
-    });
-
-    if (hit) {
-      const newScore = score + 1;
-      setScore(newScore);
-      sendMessage({
-        type: "UPDATE_SCORE",
-        payload: { roomCode, score: newScore },
-      });
-    }
-
-    setFruits(updated);
-  };
-
-  // ⏱️ Game Logic & WS Init
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user"));
+    console.log("[Game] ✅ Game component mounted.");
     if (!user) return navigate("/login");
 
     const ws = connectSocket();
 
-    // Join game
     ws.onopen = () => {
+      console.log("✅ WS OPEN - sending JOIN and PING");
       sendMessage({ type: "JOIN_GAME", payload: { roomCode } });
+      sendMessage({ type: "PING_DEBUG", payload: "hello from Game.jsx" });
     };
 
-    // Incoming messages
     onMessage((data) => {
-      if (data.type === "UPDATE_SCORE") {
-        setLeaderboard(data.payload.scores);
-      }
+      switch (data.type) {
+        case "GAME_STARTED":
+          setGameStarted(true);
+          setGameDuration(data.payload.duration || 60);
+          setTimeLeft(data.payload.duration || 60);
+          console.log("🎮 Game officially started!");
+          break;
 
-      if (data.type === "END_GAME") {
-        navigate(`/leaderboard/${roomCode}`);
+        case "FRUIT":
+          setFruits((prev) => [...prev, { ...data.payload, id: crypto.randomUUID() }]);
+          break;
+
+        case "UPDATE_SCORE":
+          setLeaderboard(data.payload.scores);
+          break;
+
+        case "END_GAME":
+          navigate(`/leaderboard/${roomCode}`);
+          break;
+
+        default:
+          break;
       }
     });
 
-    // Timer
+    return () => {
+      disconnectSocket();
+    };
+  }, [roomCode, navigate]);
+
+  // ⏱️ Game timer
+  useEffect(() => {
+    if (!gameStarted) return;
+
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev === 1) {
@@ -131,15 +82,100 @@ const Game = () => {
       });
     }, 1000);
 
-    return () => {
-      clearInterval(timer);
-      disconnectSocket();
+    return () => clearInterval(timer);
+  }, [gameStarted]);
+
+  // 🖌️ Drawing Loop
+  useEffect(() => {
+    if (!gameStarted) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      console.warn("⛔ Canvas not yet mounted, skipping draw setup");
+      return;
+    }
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      console.error("⛔ Could not get 2D context from canvas");
+      return;
+    }
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      setFruits((prevFruits) => {
+        const updated = prevFruits
+          .map((fruit) => ({ ...fruit, y: fruit.y + (fruit.speed || 3) }))
+          .filter((fruit) => fruit.y < canvas.height + 50);
+
+        updated.forEach((fruit) => {
+          ctx.beginPath();
+          ctx.arc(fruit.x, fruit.y, fruit.radius || 25, 0, Math.PI * 2);
+          ctx.fillStyle = fruit.color || "red";
+          ctx.fill();
+          ctx.closePath();
+        });
+
+        return updated;
+      });
+
+      requestAnimationFrame(draw);
     };
-  }, [roomCode, navigate]);
+
+    draw();
+  }, [gameStarted]);
+
+  // 🥷 Handle slicing
+  const handleSlice = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    let hit = false;
+    let slicedFruitId = null;
+
+    const updated = fruits.map((fruit) => {
+      const dx = fruit.x - x;
+      const dy = fruit.y - y;
+      const distance = Math.sqrt(dx ** 2 + dy ** 2);
+
+      if (!fruit.sliced && distance < (fruit.radius || 25) + 10) {
+        hit = true;
+        slicedFruitId = fruit.id;
+        return { ...fruit, y: canvas.height + 100, sliced: true };
+      }
+      return fruit;
+    });
+
+    if (hit) {
+      const newScore = score + 1;
+      setScore(newScore);
+
+      sendMessage({
+        type: "SLICE",
+        payload: {
+          roomCode,
+          fruitId: slicedFruitId,
+          userId,
+        },
+      });
+
+      sendMessage({
+        type: "UPDATE_SCORE",
+        payload: { roomCode, score: newScore },
+      });
+    }
+
+    setFruits(updated);
+  };
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      {/* Game Canvas */}
+      {/* Game Canvas Area */}
       <div className="flex-1 flex flex-col items-center justify-center relative">
         <h2 className="absolute top-4 left-4 text-lg font-bold">
           Time: {timeLeft}s
@@ -147,16 +183,26 @@ const Game = () => {
         <h2 className="absolute top-4 right-4 text-lg font-bold">
           Score: {score}
         </h2>
-        <canvas
-          ref={canvasRef}
-          width={800}
-          height={600}
-          className="rounded shadow-lg bg-white"
-          onClick={handleSlice}
-        />
+
+        {gameStarted ? (
+          <canvas
+            ref={canvasRef}
+            width={800}
+            height={600}
+            className="rounded shadow-lg bg-white"
+            onClick={handleSlice}
+            onMouseMove={(e) => {
+              if (e.buttons === 1) handleSlice(e);
+            }}
+          />
+        ) : (
+          <div className="text-xl text-gray-700 font-semibold">
+            Waiting for host to start the game...
+          </div>
+        )}
       </div>
 
-      {/* Leaderboard */}
+      {/* Live Leaderboard */}
       <LeaderboardPanel leaderboard={leaderboard} />
     </div>
   );
