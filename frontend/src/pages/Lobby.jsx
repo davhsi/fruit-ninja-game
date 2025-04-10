@@ -1,102 +1,24 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React from "react";
+import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { toast } from "sonner";
 import { Copy } from "lucide-react";
-
-import {
-  connectSocket,
-  sendMessage,
-  onMessage,
-  disconnectSocket,
-} from "@/services/socket";
+import { toast } from "sonner";
+import useLobby from "@/hooks/useLobby";
 
 const Lobby = () => {
   const { roomCode } = useParams();
-  const navigate = useNavigate();
-
-  const [players, setPlayers] = useState([]);
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [hostId, setHostId] = useState(null);
-  const [duration, setDuration] = useState(60);
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
-
-    if (!token || !storedUser) {
-      toast.error("Please log in again.");
-      return navigate("/login");
-    }
-
-    let userData;
-    try {
-      userData = JSON.parse(storedUser);
-      setUser(userData);
-    } catch (err) {
-      toast.error("Corrupted user data.");
-      return navigate("/login");
-    }
-
-    let isMounted = true;
-    const ws = connectSocket({ token, roomCode });
-
-    const handleMessage = (data) => {
-      if (!isMounted) return;
-      console.log("[Lobby] ⬇️ Message received:", data);
-
-      switch (data.type) {
-        case "GAME_STARTED":
-          console.log("[Lobby] 🎮 GAME_STARTED received. Navigating...");
-          navigate(`/game/${roomCode}`);
-          break;
-
-        case "PLAYER_LIST":
-          setPlayers(data.payload.players);
-          setHostId(data.payload.hostId);
-          setLoading(false);
-          break;
-
-        case "PLAYER_JOINED":
-          setPlayers((prev) => [...prev, data.payload]);
-          break;
-
-        case "PLAYER_LEFT":
-          setPlayers((prev) => prev.filter((p) => p.id !== data.payload));
-          break;
-
-        case "PONG":
-          console.log("🏓 PONG received from server.");
-          break;
-
-        default:
-          console.warn("Unhandled WS message type:", data.type);
-      }
-    };
-
-    const removeListener = onMessage(handleMessage); // ✅ track it for cleanup
-    // sendMessage({ type: "JOIN_ROOM", token, roomCode }); // 🔥 rejoin room
-
-    return () => {
-      isMounted = false;
-      removeListener(); // ✅ cleanup listener only for this component
-      // disconnectSocket(); // optional: leave socket alive for reuse
-    };
-  }, [roomCode, navigate]);
-
-  const isHost = user?._id === hostId;
-
-  const handleStartGame = () => {
-    console.log("[Lobby] 🔼 Sending START_GAME event...");
-    sendMessage({ type: "START_GAME", roomCode, duration });
-  };
-
-  const copyRoomCode = async () => {
-    await navigator.clipboard.writeText(roomCode);
-    toast.success("Room code copied!");
-  };
+  const {
+    players,
+    user,
+    loading,
+    hostId,
+    duration,
+    isHost,
+    handleStartGame,
+    handleDurationChange,
+    copyRoomCode,
+  } = useLobby(roomCode);
 
   if (loading || !user) {
     return (
@@ -144,7 +66,7 @@ const Lobby = () => {
             <label className="text-sm font-medium">Select Duration:</label>
             <select
               value={duration}
-              onChange={(e) => setDuration(Number(e.target.value))}
+              onChange={handleDurationChange}
               className="border rounded px-2 py-1 bg-background"
             >
               <option value={30}>30 seconds</option>
