@@ -1,70 +1,78 @@
-// setupWebSocket.js
 const WebSocket = require("ws");
 const rooms = require("./rooms");
 
-// 🔌 Handlers
+// WebSocket Handlers
 const handleJoinRoom = require("./wsHandlers/joinRoom");
 const handleStartGame = require("./wsHandlers/startGame");
-const updateScore = require("./wsHandlers/score");
+const { updateScore } = require("./wsHandlers/scoreManager");
 const handleDisconnect = require("./wsHandlers/disconnect");
 
-// ✅ Add this line to import the initializer
-// const { initSendToRoom } = require("../utils/sendToRoom");
+const activeFruitIntervals = {}; // Store fruit intervals by room
 
 function setupWebSocket(server) {
   const wss = new WebSocket.Server({ server });
-
-  // ✅ Initialize sendToRoom with wss
-  // initSendToRoom(wss);
-
   console.log("✅ WebSocket server initialized");
 
   wss.on("connection", (ws) => {
-    console.log("🔌 WebSocket connection established");
+    console.log("🔌 New client connected");
 
     ws.on("message", async (message) => {
       try {
         const data = JSON.parse(message);
-        console.log("📨 Received message type:", data.type);
+        const { type, roomCode, userId, token } = data;
 
-        switch (data.type) {
+        console.log("📨 Message type:", type);
+
+        switch (type) {
           case "PING_DEBUG":
-            console.log("📬 GOT PING_DEBUG from frontend:", payload);
+            console.log("📬 PING_DEBUG:", data);
             break;
 
           case "PING":
-            console.log("💓 Received PING");
             ws.send(JSON.stringify({ type: "PONG" }));
             break;
 
           case "JOIN_ROOM":
-            console.log("📩 Received JOIN_ROOM:", data);
-            handleJoinRoom(ws, data, wss); // ✅ pass wss here
+            handleJoinRoom(ws, data, wss);
             break;
 
           case "START_GAME":
-            handleStartGame(data, wss, ws);
+            handleStartGame(data, wss, ws, activeFruitIntervals);
             break;
 
           case "HIT_FRUIT":
-            await updateScore(data.roomCode, data.userId, 1);
+            await updateScore(roomCode, userId, 1);
             break;
 
           case "HIT_BOMB":
-            await updateScore(data.roomCode, data.userId, -1);
+            await updateScore(roomCode, userId, -1);
+            break;
+
+          case "END_GAME":
+            if (roomCode && activeFruitIntervals[roomCode]) {
+              clearInterval(activeFruitIntervals[roomCode]);
+              delete activeFruitIntervals[roomCode];
+            }
+
+            // Notify everyone in room
+            const { sendToRoom } = require("../utils/sendToRoom");
+            sendToRoom(roomCode, {
+              type: "END_GAME",
+              payload: { roomCode },
+            });
             break;
 
           default:
-            console.log("❓ Unknown message type:", data.type);
+            console.log("❓ Unknown message type:", type);
         }
       } catch (err) {
-        console.error("❌ Error parsing message:", err.message);
+        console.error("❌ Failed to parse message:", err.message);
       }
     });
 
     ws.on("close", () => {
-      console.log("⚠️ WebSocket connection closed");
-      handleDisconnect(ws, wss); // if you store roomId/userId on ws object
+      console.log("⚠️ WebSocket disconnected");
+      handleDisconnect(ws, wss);
     });
   });
 }

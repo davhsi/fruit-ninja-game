@@ -77,7 +77,7 @@ const Lobby = () => {
     };
 
     const removeListener = onMessage(handleMessage); // ✅ track it for cleanup
-    sendMessage({ type: "JOIN_ROOM", token, roomCode }); // 🔥 rejoin room
+    // sendMessage({ type: "JOIN_ROOM", token, roomCode }); // 🔥 rejoin room
 
     return () => {
       isMounted = false;

@@ -1,35 +1,39 @@
-
-// websocket/wsHandlers/endGame.js
 const rooms = require("../rooms");
 const db = require("../../services/db/dbService");
-const scores = require("./score");
+const scores = require("./scoreManager"); // ← same thing
 const { sendToRoom } = require("../../utils/sendToRoom");
+
+/**
+ * Ends the game, closes player sockets, saves match results, and notifies players.
+ *
+ * @param {string} roomCode - Room ID
+ * @param {number} duration - Duration of the match in seconds
+ * @param {Date} startTime - When the match started
+ * @param {WebSocket.Server} wss - WebSocket server instance
+ */
 async function endGame(roomCode, duration, startTime, wss) {
-  const roomPlayers = Array.isArray(rooms[roomCode]) ? rooms[roomCode] : [];
+  const roomPlayers = Array.isArray(rooms[roomCode]?.players) ? rooms[roomCode].players : [];
   const leaderboard = [];
   const endTime = new Date();
 
-  // ✅ Close all player WebSockets
-  for (let player of roomPlayers) {
-    if (player.socket && player.socket.readyState === 1) {
+  // 🛑 Close player sockets
+  for (const player of roomPlayers) {
+    if (player.socket?.readyState === 1) {
       player.socket.close();
     }
   }
 
-  // ✅ Gather scores from in-memory
-  for (let player of roomPlayers) {
-    const userId = player.id;
-    if (userId) {
-      const score = scores.getScore(roomCode, userId) || 0;
-      leaderboard.push({ userId, score });
-    }
+  // 🧠 Collect scores
+  for (const player of roomPlayers) {
+    const score = scores.getScore(roomCode, player.id) || 0;
+    leaderboard.push({ userId: player.id, score });
   }
 
-  // Sort by score descending
+  // 🥇 Rank players
   leaderboard.sort((a, b) => b.score - a.score);
   const winner = leaderboard[0]?.userId;
 
-  // Save match result to DB
+  // 💾 Persist match results
   await db.saveMatch({
     roomId: roomCode,
     players: leaderboard,
@@ -39,7 +43,7 @@ async function endGame(roomCode, duration, startTime, wss) {
     winner,
   });
 
-  // Notify players
+  // 📣 Notify all in the room
   sendToRoom(
     roomCode,
     {
@@ -49,7 +53,7 @@ async function endGame(roomCode, duration, startTime, wss) {
     wss
   );
 
-  console.log("🏁 Game Over. Final leaderboard:", leaderboard);
+  console.log(`🏁 Game over in room ${roomCode}. Leaderboard:`, leaderboard);
 }
 
 module.exports = endGame;

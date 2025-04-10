@@ -1,47 +1,51 @@
-const { generateRandomFruit } = require("../wsUtils");
-const broadcastLeaderboard = require("./leaderboard");
-const endGame = require("./endGame");
-const rooms = require("../rooms");
 const { sendToRoom } = require("../../utils/sendToRoom");
+const { v4: uuidv4 } = require("uuid");
+const emojiOptions = ["🍎", "🍌", "🍉", "🍓", "🍇", "🍍"];
+const rooms = require("../rooms");
+const endGame = require("./endGame"); // must accept (roomCode, duration, startTime, wss)
 
-function handleStartGame(data, wss, ws) {
+function handleStartGame(data, wss, ws, activeFruitIntervals) {
   const { roomCode, duration } = data;
-
-  if (!ws || !ws.userId || !ws.roomCode) {
-    console.error("❌ START_GAME: Missing ws context");
-    return;
-  }
-
-  // Check if room exists
   const room = rooms[roomCode];
-  if (!room) {
-    ws.send(JSON.stringify({ type: "ERROR", message: "Room does not exist" }));
-    return;
-  }
+  if (!room) return;
 
   const hostId = room.players[0]?.id;
-  if (ws.userId !== hostId) {
-    ws.send(
-      JSON.stringify({ type: "ERROR", message: "Only host can start the game" })
-    );
-    console.warn(`🚫 Non-host tried to start game: ${ws.userId}`);
-    return;
+  if (ws.userId !== hostId) return; // Only host can start
+
+  // Clean up any old interval for this room
+  if (activeFruitIntervals[roomCode]) {
+    clearInterval(activeFruitIntervals[roomCode]);
+    delete activeFruitIntervals[roomCode];
   }
 
-  const startTime = new Date();
-  console.log(`🚀 Game started for room ${roomCode}, duration: ${duration}s`);
+  const gameStartTime = new Date();
 
-  sendToRoom(roomCode, { type: "GAME_STARTED", payload: { duration } }, wss);
+  sendToRoom(roomCode, {
+    type: "GAME_STARTED",
+    payload: { duration },
+  });
 
-  const fruitInterval = setInterval(() => {
-    const fruit = generateRandomFruit();
+  // Begin fruit drops
+  activeFruitIntervals[roomCode] = setInterval(() => {
+    const fruit = {
+      id: uuidv4(),
+      emoji: emojiOptions[Math.floor(Math.random() * emojiOptions.length)],
+      x: 5 + Math.random() * 85,
+      y: 0,
+      speed: 1 + Math.random() * 2,
+    };
+
     sendToRoom(roomCode, { type: "FRUIT", payload: fruit });
-    broadcastLeaderboard(roomCode, wss);
   }, 1000);
 
+  // End game after specified duration
   setTimeout(() => {
-    clearInterval(fruitInterval);
-    endGame(roomCode, duration, startTime, wss);
+    clearInterval(activeFruitIntervals[roomCode]);
+    delete activeFruitIntervals[roomCode];
+
+    if (typeof endGame === "function") {
+      endGame(roomCode, duration, gameStartTime, wss); // ✅ fixed
+    }
   }, duration * 1000);
 }
 
