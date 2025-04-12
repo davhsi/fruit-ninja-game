@@ -1,16 +1,19 @@
 import React from "react";
-import { useGame } from "@/hooks/useGame";
+import { useLocation } from "react-router-dom";
+import useGame from "@/hooks/useGame";
 import LeaderboardPanel from "@/components/LeaderboardPanel";
 
 const Game = () => {
-  const {
-    gameStarted,
-    timeLeft,
-    score,
-    fruits,
-    leaderboard,
-    handleSlice,
-  } = useGame({ roomCode, user, gameDuration: 30 });
+  const location = useLocation();
+  const { roomCode } = location.state || {};
+
+  // ✅ Grab user from localStorage instead of location.state
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  console.log("🎮 Game initialized with:", { roomCode, user });
+
+  const { gameStarted, timeLeft, score, fruits, leaderboard, handleSlice } =
+    useGame({ roomCode, user, gameDuration: 30 });
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -25,6 +28,11 @@ const Game = () => {
 
         {gameStarted ? (
           <div className="w-full h-full relative">
+            {fruits.length === 0 && (
+              <div className="text-red-500 font-bold absolute top-1/2 left-1/2 -translate-x-1/2">
+                🧨 No fruits to render!
+              </div>
+            )}
             {fruits.map((fruit) => (
               <div
                 key={fruit.id}

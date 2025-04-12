@@ -1,109 +1,122 @@
 import { useState, useEffect, useRef } from "react";
-import { onMessage, sendMessage } from "@/services/socket";
+import { onMessage, sendMessage } from "@/services/socket/index.js";
 
-const FRUIT_EMOJIS = ["🍎", "🍌", "🍉", "🍓", "🍍", "🍇", "🥝"];
-const FRUIT_INTERVAL_MS = 1000;
-
-export const useGame = ({ roomCode, user, gameDuration = 30, navigate }) => {
+const useGame = ({ roomCode, user, gameDuration, navigate }) => {
   const [fruits, setFruits] = useState([]);
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(gameDuration);
   const [gameOver, setGameOver] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
-  const fruitIdRef = useRef(0);
-  const intervalRef = useRef(null);
+
   const timerRef = useRef(null);
+  const fallIntervalRef = useRef(null);
   const isGameRunningRef = useRef(false);
 
-  // Generate random fruit
-  const generateFruit = () => {
-    return {
-      id: fruitIdRef.current++,
-      emoji: FRUIT_EMOJIS[Math.floor(Math.random() * FRUIT_EMOJIS.length)],
-      x: Math.random() * 90 + 5,
-      y: 0,
-    };
-  };
-
-  // Slice handler
   const handleSlice = (fruitId) => {
-    if (!isGameRunningRef.current) return;
-
+    if (!isGameRunningRef.current || !user?._id) return;
+  
     setFruits((prev) => prev.filter((fruit) => fruit.id !== fruitId));
     setScore((prev) => prev + 1);
-
+  
     sendMessage({
-      type: "UPDATE_SCORE",
+      type: "HIT_FRUIT", 
       roomCode,
       userId: user._id,
-      score: 1,
     });
   };
+  
 
   const endGame = () => {
     isGameRunningRef.current = false;
-    clearInterval(intervalRef.current);
     clearInterval(timerRef.current);
+    clearInterval(fallIntervalRef.current);
     setGameOver(true);
     setGameStarted(false);
 
-    sendMessage({
-      type: "END_GAME",
-      roomCode,
-    });
+    sendMessage({ type: "END_GAME", roomCode });
   };
 
-  const startGameLoop = () => {
+  const startTimer = () => {
+    console.log("[Game] ⏱️ Timer started");
     isGameRunningRef.current = true;
     setGameStarted(true);
-
-    intervalRef.current = setInterval(() => {
-      setFruits((prev) => [...prev, generateFruit()]);
-    }, FRUIT_INTERVAL_MS);
+    setTimeLeft(gameDuration);
 
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
+          console.log("[Game] 🛑 Time's up!");
           endGame();
           return 0;
         }
+        console.log("[Game] ⏲️ Time left:", prev - 1);
         return prev - 1;
       });
     }, 1000);
+
+    fallIntervalRef.current = setInterval(() => {
+      setFruits((prevFruits) => {
+        const moved = prevFruits
+          .map((fruit) => ({ ...fruit, y: fruit.y + fruit.speed }))
+          .filter((fruit) => fruit.y < 100);
+
+        console.log("[Game] 🍌 Updated fruit positions:", moved);
+        return moved;
+      });
+    }, 50);
   };
 
   useEffect(() => {
+    console.log("[Game] 🧠 useGame mounted, setting up onMessage handler.");
     const removeListener = onMessage((data) => {
-      switch (data.type) {
-        case "GAME_OVER":
-          console.log("🏁 GAME_OVER received");
-          endGame();
-          break;
+      try {
+        console.log("[Game] ⬇️ Message received:", data);
 
-        case "PING":
-          sendMessage({ type: "PONG" });
-          break;
+        switch (data.type) {
+          case "GAME_STARTED":
+            console.log("[Game] 🚀 GAME_STARTED received from backend", data);
+            startTimer();
+            break;
 
-        case "LEADERBOARD_UPDATE":
-          setLeaderboard(data.leaderboard || []);
-          break;
+          case "FRUIT":
+            console.log("[Game] 🍒 FRUIT broadcast received:", data.payload);
+            setFruits((prev) => [...prev, data.payload]);
+            break;
 
-        default:
-          break;
+          case "LEADERBOARD_UPDATE":
+            console.log("[Game] 📊 Leaderboard updated:", data.leaderboard);
+            setLeaderboard(data.leaderboard || []);
+            break;
+
+          case "GAME_OVER":
+            console.log("[Game] 🏁 GAME_OVER received");
+            endGame();
+            break;
+
+          case "PING":
+            console.log("[Game] 🏓 PING received, replying with PONG");
+            sendMessage({ type: "PONG" });
+            break;
+
+          default:
+            console.warn("[Game] ⚠️ Unhandled message type:", data.type);
+        }
+      } catch (err) {
+        console.error("❌ [Game] Error handling WS message:", err, data);
       }
     });
 
-    return () => {
-      removeListener();
-      clearInterval(intervalRef.current);
-      clearInterval(timerRef.current);
-    };
-  }, []);
 
-  useEffect(() => {
-    startGameLoop();
-  }, []);
+
+    return () => {
+      console.log("[Game] Cleanup onMessage and intervals");
+      removeListener();
+      clearInterval(timerRef.current);
+      clearInterval(fallIntervalRef.current);
+      isGameRunningRef.current = false;
+    };
+  }, [roomCode, user]);
 
   return {
     fruits,
@@ -115,3 +128,5 @@ export const useGame = ({ roomCode, user, gameDuration = 30, navigate }) => {
     leaderboard,
   };
 };
+
+export default useGame;

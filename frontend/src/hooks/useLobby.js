@@ -5,7 +5,7 @@ import {
   connectSocket,
   onMessage,
   sendMessage,
-} from "@/services/socket";
+} from "@/services/socket/index.js";
 
 const useLobby = (roomCode) => {
   const navigate = useNavigate();
@@ -24,54 +24,59 @@ const useLobby = (roomCode) => {
       return navigate("/login");
     }
 
+    let userData;
     try {
-      const userData = JSON.parse(storedUser);
+      userData = JSON.parse(storedUser);
       setUser(userData);
     } catch {
       toast.error("Corrupted user data.");
       return navigate("/login");
     }
 
-    let isMounted = true;
     connectSocket({ token, roomCode });
 
-    const handleMessage = (data) => {
-      if (!isMounted) return;
-      console.log("[Lobby] ⬇️ Message received:", data);
+    const removeListener = onMessage((data) => {
+      try {
+        console.log("[Lobby] ⬇️ Message received:", data);
 
-      switch (data.type) {
-        case "GAME_STARTED":
-          navigate(`/game/${roomCode}`);
-          break;
+        switch (data.type) {
+          case "GAME_STARTED": {
+            const { roomCode: receivedRoomCode, duration } = data.payload;
+            navigate(`/game/${receivedRoomCode}`, {
+              state: { roomCode: receivedRoomCode, user: userData, duration },
+            });
+            break;
+          }
 
-        case "PLAYER_LIST":
-          setPlayers(data.payload.players);
-          setHostId(data.payload.hostId);
-          setLoading(false);
-          break;
+          case "PLAYER_LIST":
+            setPlayers(data.payload.players);
+            setHostId(data.payload.hostId);
+            setLoading(false);
+            break;
 
-        case "PLAYER_JOINED":
-          setPlayers((prev) => [...prev, data.payload]);
-          break;
+          case "PLAYER_JOINED":
+            setPlayers((prev) => [...prev, data.payload]);
+            break;
 
-        case "PLAYER_LEFT":
-          setPlayers((prev) => prev.filter((p) => p.id !== data.payload));
-          break;
+          case "PLAYER_LEFT":
+            setPlayers((prev) => prev.filter((p) => p.id !== data.payload));
+            break;
 
-        case "PONG":
-          console.log("🏓 PONG from server.");
-          break;
+          case "PONG":
+            console.log("🏓 PONG from server.");
+            break;
 
-        default:
-          console.warn("Unhandled WS message type:", data.type);
+          default:
+            console.warn("⚠️ [Lobby] Unhandled WS message type:", data.type);
+        }
+      } catch (err) {
+        console.error("❌ [Lobby] Error handling WS message:", err, data);
       }
-    };
-
-    const cleanup = onMessage(handleMessage);
+    });
 
     return () => {
-      isMounted = false;
-      cleanup();
+      console.log("[Lobby] Cleanup onMessage");
+      removeListener();
     };
   }, [roomCode, navigate]);
 

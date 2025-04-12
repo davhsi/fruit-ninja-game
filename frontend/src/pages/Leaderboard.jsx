@@ -29,7 +29,13 @@ const Leaderboard = () => {
         const sorted = [...data.payload].sort((a, b) => b.score - a.score);
         setFinalScores(sorted);
       }
+    
+      if (data.type === "LEADERBOARD_UPDATE") {
+        const sorted = [...data.leaderboard].sort((a, b) => b.score - a.score);
+        setFinalScores(sorted);
+      }
     });
+    
 
     return () => {
       disconnectSocket();

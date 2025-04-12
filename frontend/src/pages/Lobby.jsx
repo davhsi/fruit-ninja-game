@@ -3,8 +3,7 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Copy } from "lucide-react";
-import { toast } from "sonner";
-import useLobby from "@/hooks/useLobby";
+import useLobby from "@/hooks/useLobby"; // <- already handles socket logic
 
 const Lobby = () => {
   const { roomCode } = useParams();

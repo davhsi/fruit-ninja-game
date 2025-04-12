@@ -24,6 +24,10 @@ function setupWebSocket(server) {
         console.log("📨 Message type:", type);
 
         switch (type) {
+          case "START_GAME":
+            handleStartGame(data, wss, ws, activeFruitIntervals);
+            break;
+
           case "PING_DEBUG":
             console.log("📬 PING_DEBUG:", data);
             break;
@@ -36,16 +40,14 @@ function setupWebSocket(server) {
             handleJoinRoom(ws, data, wss);
             break;
 
-          case "START_GAME":
-            handleStartGame(data, wss, ws, activeFruitIntervals);
-            break;
-
           case "HIT_FRUIT":
             await updateScore(roomCode, userId, 1);
+            broadcastLeaderboard(roomCode);
             break;
 
           case "HIT_BOMB":
             await updateScore(roomCode, userId, -1);
+            broadcastLeaderboard(roomCode);
             break;
 
           case "END_GAME":

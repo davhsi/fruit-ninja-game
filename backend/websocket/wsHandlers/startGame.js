@@ -2,7 +2,7 @@ const { sendToRoom } = require("../../utils/sendToRoom");
 const { v4: uuidv4 } = require("uuid");
 const emojiOptions = ["🍎", "🍌", "🍉", "🍓", "🍇", "🍍"];
 const rooms = require("../rooms");
-const endGame = require("./endGame"); // must accept (roomCode, duration, startTime, wss)
+const endGame = require("./endGame");
 
 function handleStartGame(data, wss, ws, activeFruitIntervals) {
   const { roomCode, duration } = data;
@@ -10,9 +10,8 @@ function handleStartGame(data, wss, ws, activeFruitIntervals) {
   if (!room) return;
 
   const hostId = room.players[0]?.id;
-  if (ws.userId !== hostId) return; // Only host can start
+  if (ws.userId !== hostId) return;
 
-  // Clean up any old interval for this room
   if (activeFruitIntervals[roomCode]) {
     clearInterval(activeFruitIntervals[roomCode]);
     delete activeFruitIntervals[roomCode];
@@ -20,12 +19,16 @@ function handleStartGame(data, wss, ws, activeFruitIntervals) {
 
   const gameStartTime = new Date();
 
+  // ✅ Include roomCode in GAME_STARTED
   sendToRoom(roomCode, {
     type: "GAME_STARTED",
-    payload: { duration },
+    payload: {
+      duration,
+      roomCode,
+    },
   });
 
-  // Begin fruit drops
+  // ✅ Start dropping fruits, attach roomCode to each one
   activeFruitIntervals[roomCode] = setInterval(() => {
     const fruit = {
       id: uuidv4(),
@@ -35,16 +38,21 @@ function handleStartGame(data, wss, ws, activeFruitIntervals) {
       speed: 1 + Math.random() * 2,
     };
 
-    sendToRoom(roomCode, { type: "FRUIT", payload: fruit });
+    sendToRoom(roomCode, {
+      type: "FRUIT",
+      payload: {
+        ...fruit,
+        roomCode, // ✅ new addition
+      },
+    });
   }, 1000);
 
-  // End game after specified duration
   setTimeout(() => {
     clearInterval(activeFruitIntervals[roomCode]);
     delete activeFruitIntervals[roomCode];
 
     if (typeof endGame === "function") {
-      endGame(roomCode, duration, gameStartTime, wss); // ✅ fixed
+      endGame(roomCode, duration, gameStartTime, wss);
     }
   }, duration * 1000);
 }
