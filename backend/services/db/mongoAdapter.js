@@ -35,10 +35,16 @@ async function createUser(userData) {
   return await User.create(userData);
 }
 
+async function getMatchesForUser(userId) {
+  return await Match.find({ "players.userId": userId }).sort({ startTime: -1 }).lean();
+}
+
+
 module.exports = {
   connect,
   saveMatch,
   getMatches,
+  getMatchesForUser,
   getUserByEmail,
   createUser,
 };

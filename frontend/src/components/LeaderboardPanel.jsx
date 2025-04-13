@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useMemo } from "react";
 
+// Function to get the medal emoji based on the player's position
 const getMedalEmoji = (index) => {
   if (index === 0) return "🥇";
   if (index === 1) return "🥈";
@@ -7,16 +8,19 @@ const getMedalEmoji = (index) => {
   return "";
 };
 
-const Leaderboard = ({ scores = [], highlightUserId = null }) => {
-  const sorted = [...scores].sort((a, b) => b.score - a.score);
+const LeaderboardPanel = React.memo(({ scores = [], highlightUserId = null }) => {
+  // Memoize sorted leaderboard to avoid re-sorting on every render
+  const sorted = useMemo(() => {
+    return [...scores].sort((a, b) => b.score - a.score);
+  }, [scores]);
 
   return (
     <div className="bg-white shadow rounded-lg p-6 w-full max-w-md">
-      <ol className="space-y-2">
-        {sorted.length === 0 ? (
-          <p className="text-gray-500 text-center">No scores available.</p>
-        ) : (
-          sorted.map((player, index) => (
+      {sorted.length === 0 ? (
+        <p className="text-gray-500 text-center">Waiting for players...</p>
+      ) : (
+        <ol className="space-y-2">
+          {sorted.map((player, index) => (
             <li
               key={player._id || player.id || index}
               className={`flex justify-between items-center ${
@@ -30,11 +34,11 @@ const Leaderboard = ({ scores = [], highlightUserId = null }) => {
               </span>
               <span className="text-blue-600 font-bold">{player.score}</span>
             </li>
-          ))
-        )}
-      </ol>
+          ))}
+        </ol>
+      )}
     </div>
   );
-};
+});
 
-export default Leaderboard;
+export default LeaderboardPanel;

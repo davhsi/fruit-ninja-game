@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import useGame from "@/hooks/useGame";
 import LeaderboardPanel from "@/components/LeaderboardPanel";
@@ -7,30 +7,48 @@ const Game = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ✅ Get roomCode from state OR localStorage fallback
-  const { roomCode: stateRoomCode } = location.state || {};
-  const localRoomCode = localStorage.getItem("finalRoomCode");
-  const roomCode = stateRoomCode || localRoomCode;
+  // 🧠 roomCode: from location or fallback to localStorage
+  const roomCode = useMemo(() => {
+    return location.state?.roomCode || localStorage.getItem("finalRoomCode");
+  }, [location.state]);
 
-  // ✅ If still no roomCode, bail
-  if (!roomCode) {
-    console.error("❌ No roomCode found — redirecting to home");
-    navigate("/");
-    return null;
-  }
+  // 🧠 user: safely parsed from localStorage
+  const user = useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user"));
+    } catch (e) {
+      console.error("❌ Failed to parse user from localStorage");
+      return null;
+    }
+  }, []);
 
-  // ✅ Memoize user from localStorage
-  const rawUser = localStorage.getItem("user");
-  const user = useMemo(() => JSON.parse(rawUser), [rawUser]);
+  // 🛡️ Redirect if essentials are missing
+  useEffect(() => {
+    if (!roomCode || !user) {
+      console.warn("🚨 Missing roomCode or user — redirecting to home");
+      navigate("/");
+    }
+  }, [roomCode, user, navigate]);
 
-  console.log("🎮 Game initialized with:", { roomCode, user });
+  // 🧪 Debug mount/unmount (only in dev)
+  useEffect(() => {
+    console.log("🌀 Game mounted");
+    return () => console.log("💨 Game unmounted");
+  }, []);
 
-  const { gameStarted, timeLeft, score, fruits, leaderboard, handleSlice } =
-    useGame({ roomCode, user, gameDuration: 30 });
+  // 🕹️ Game hook
+  const {
+    gameStarted,
+    timeLeft,
+    score,
+    fruits,
+    leaderboard,
+    handleSlice,
+  } = useGame({ roomCode, user, gameDuration: 30 });
 
   return (
     <div className="flex min-h-screen bg-gray-100">
-      {/* Game Area */}
+      {/* 🎮 Game Area */}
       <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden">
         <h2 className="absolute top-4 left-4 text-lg font-bold">
           Time: {timeLeft}s
@@ -68,11 +86,10 @@ const Game = () => {
         )}
       </div>
 
-      {/* Live Leaderboard */}
-      <LeaderboardPanel leaderboard={leaderboard} />
-    </div>
+      {/* 📊 Live Leaderboard */}
+      <LeaderboardPanel scores={leaderboard} highlightUserId={user?._id} />
+      </div>
   );
 };
 
 export default Game;
- 

@@ -9,7 +9,7 @@ console.log("🧪 JWT_SECRET:", process.env.JWT_SECRET);
 const setupWebSocket = require("./websocket/setupWebSocket");
 const authRoutes = require("./routes/authRoutes");
 const roomRoutes = require("./routes/roomRoutes");
-const matchRoutes = require("./routes/matchRoutes");
+const matches = require("./routes/matches");
 
 const dbService = require("./services/db/dbService"); // ✅ Import DB service
 
@@ -20,7 +20,7 @@ app.use(express.json());
 
 app.use("/api/auth", authRoutes);
 app.use("/api/room", roomRoutes);
-app.use("/api/matches", matchRoutes);
+app.use("/api/matches", matches);
 
 // ✅ Create HTTP server for Express + WebSocket
 const server = http.createServer(app);

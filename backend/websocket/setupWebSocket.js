@@ -42,6 +42,7 @@ function setupWebSocket(server) {
             break;
 
           case "HIT_FRUIT":
+            console.log("🍉 HIT_FRUIT from", userId, "in room", roomCode);
             await updateScore(roomCode, userId, 1);
             broadcastLeaderboard(roomCode);
             break;

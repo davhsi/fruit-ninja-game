@@ -21,6 +21,10 @@ exports.getUserByEmail = async (email) => {
     username: result.Item.username.S
   };
 };
+async function getMatchesForUser(userId) {
+  // TODO: Implement this for DynamoDB
+  return [];
+}
 
 exports.createUser = async ({ email, password, username }) => {
   const user = {

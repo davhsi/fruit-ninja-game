@@ -1,6 +1,5 @@
-//websocket/wsHandlers/leaderboard.js
 const rooms = require("../rooms");
-const scores = require("./scoreManager"); // ← this now works again
+const scores = require("./scoreManager");
 const { sendToRoom } = require("../../utils/sendToRoom");
 
 function broadcastLeaderboard(roomCode) {
@@ -11,13 +10,19 @@ function broadcastLeaderboard(roomCode) {
     return;
   }
 
+  console.log(`📣 Broadcasting leaderboard for room: ${roomCode}`);
+
   const leaderboard = room.players
     .filter(player => player.id)
-    .map(player => ({
-      userId: player.id,
-      username: player.username,
-      score: scores.getScore(roomCode, player.id) || 0,
-    }))
+    .map(player => {
+      const score = scores.getScore(roomCode, player.id);
+      console.log(`🔍 Leaderboard Entry | user: ${player.username} (${player.id}), score: ${score}`);
+      return {
+        userId: player.id,
+        username: player.username,
+        score: score,
+      };
+    })
     .sort((a, b) => b.score - a.score);
 
   sendToRoom(roomCode, {
@@ -25,7 +30,7 @@ function broadcastLeaderboard(roomCode) {
     payload: leaderboard,
   });
 
-  console.log(`📊 Leaderboard for ${roomCode}:`, leaderboard);
+  console.log(`📊 Final Leaderboard Payload for ${roomCode}:`, leaderboard);
 }
 
 module.exports = broadcastLeaderboard;

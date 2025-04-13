@@ -1,20 +1,20 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom"; // ✅ add this!
+import { useNavigate } from "react-router-dom";
 import { onMessage, sendMessage } from "@/services/socket/index.js";
 
 const useGame = ({ roomCode, user, gameDuration }) => {
-  const navigate = useNavigate(); // ✅ now internal
+  const navigate = useNavigate();
 
   const [fruits, setFruits] = useState([]);
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(gameDuration);
-  const [gameOver, setGameOver] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
 
   const timerRef = useRef(null);
   const fallIntervalRef = useRef(null);
   const isGameRunningRef = useRef(false);
+
   const handleSlice = (fruitId) => {
     if (!isGameRunningRef.current || !user?._id) return;
 
@@ -29,11 +29,17 @@ const useGame = ({ roomCode, user, gameDuration }) => {
   };
 
   const startTimer = () => {
+    if (isGameRunningRef.current) {
+      console.warn("[Game] ⚠️ Timer already running — ignoring duplicate GAME_STARTED");
+      return;
+    }
+
     console.log("[Game] ⏱️ Timer started");
     isGameRunningRef.current = true;
     setGameStarted(true);
     setTimeLeft(gameDuration);
 
+    // Game countdown timer
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -41,8 +47,6 @@ const useGame = ({ roomCode, user, gameDuration }) => {
           clearInterval(timerRef.current);
           clearInterval(fallIntervalRef.current);
           isGameRunningRef.current = false;
-
-          // ✅ Let backend handle game end (and send END_GAME)
           sendMessage({ type: "END_GAME", roomCode });
           return 0;
         }
@@ -50,6 +54,7 @@ const useGame = ({ roomCode, user, gameDuration }) => {
       });
     }, 1000);
 
+    // Fruit falling logic
     fallIntervalRef.current = setInterval(() => {
       setFruits((prevFruits) =>
         prevFruits
@@ -60,7 +65,8 @@ const useGame = ({ roomCode, user, gameDuration }) => {
   };
 
   useEffect(() => {
-    console.log("[Game] 🧠 useGame mounted, setting up onMessage handler.");
+    console.log("[Game] 🧠 useGame mounted — setting up onMessage listener");
+
     const removeListener = onMessage((data) => {
       try {
         console.log("[Game] ⬇️ Message received:", data);
@@ -80,19 +86,15 @@ const useGame = ({ roomCode, user, gameDuration }) => {
             break;
 
           case "END_GAME":
-            console.log("[Game] 🏁 END_GAME received");
+            console.log("[Game] 🏁 END_GAME received — cleaning up");
             clearInterval(timerRef.current);
             clearInterval(fallIntervalRef.current);
             isGameRunningRef.current = false;
 
             const finalBoard = data.payload.leaderboard || [];
-            localStorage.setItem(
-              "finalLeaderboard",
-              JSON.stringify(finalBoard)
-            );
+            localStorage.setItem("finalLeaderboard", JSON.stringify(finalBoard));
             localStorage.setItem("finalRoomCode", roomCode);
 
-            // 🔁 Navigate to Leaderboard page
             navigate(`/leaderboard/${roomCode}`);
             break;
 
@@ -109,20 +111,19 @@ const useGame = ({ roomCode, user, gameDuration }) => {
     });
 
     return () => {
-      console.log("[Game] Cleanup onMessage and intervals");
+      console.log("[Game] 🧹 Cleanup — removing listener and intervals");
       removeListener();
       clearInterval(timerRef.current);
       clearInterval(fallIntervalRef.current);
       isGameRunningRef.current = false;
     };
-  }, [roomCode]);
+  }, [roomCode, navigate]);
 
   return {
     fruits,
     score,
     timeLeft,
     gameStarted,
-    gameOver,
     handleSlice,
     leaderboard,
   };

@@ -8,7 +8,7 @@ import Register from "@/pages/Auth/Register";
 import Home from "@/pages/Home";
 import Lobby from "@/pages/Lobby";
 import Game from "@/pages/Game";
-import Leaderboard from "@/pages/LeaderboardPage";
+import LeaderboardPage from "@/pages/LeaderboardPage";
 import History from "@/pages/MatchHistory";
 
 const router = createBrowserRouter([
@@ -18,7 +18,7 @@ const router = createBrowserRouter([
   { path: "/home", element: <Home /> },
   { path: "/lobby/:roomCode", element: <Lobby /> },
   { path: "/game/:roomCode", element: <Game /> },
-  { path: "/leaderboard/:roomCode", element: <Leaderboard /> },
+  { path: "/leaderboard/:roomCode", element: <LeaderboardPage /> },
   { path: "/history", element: <History /> },
 ]);
 
