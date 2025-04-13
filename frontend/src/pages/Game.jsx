@@ -1,14 +1,27 @@
-import React from "react";
-import { useLocation } from "react-router-dom";
+import React, { useMemo } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import useGame from "@/hooks/useGame";
 import LeaderboardPanel from "@/components/LeaderboardPanel";
 
 const Game = () => {
+  const navigate = useNavigate();
   const location = useLocation();
-  const { roomCode } = location.state || {};
 
-  // ✅ Grab user from localStorage instead of location.state
-  const user = JSON.parse(localStorage.getItem("user"));
+  // ✅ Get roomCode from state OR localStorage fallback
+  const { roomCode: stateRoomCode } = location.state || {};
+  const localRoomCode = localStorage.getItem("finalRoomCode");
+  const roomCode = stateRoomCode || localRoomCode;
+
+  // ✅ If still no roomCode, bail
+  if (!roomCode) {
+    console.error("❌ No roomCode found — redirecting to home");
+    navigate("/");
+    return null;
+  }
+
+  // ✅ Memoize user from localStorage
+  const rawUser = localStorage.getItem("user");
+  const user = useMemo(() => JSON.parse(rawUser), [rawUser]);
 
   console.log("🎮 Game initialized with:", { roomCode, user });
 
@@ -62,3 +75,4 @@ const Game = () => {
 };
 
 export default Game;
+ 

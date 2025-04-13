@@ -1,10 +1,10 @@
 const rooms = require("../rooms");
 const db = require("../../services/db/dbService");
-const scores = require("./scoreManager"); // ← same thing
+const scores = require("./scoreManager");
 const { sendToRoom } = require("../../utils/sendToRoom");
 
 /**
- * Ends the game, closes player sockets, saves match results, and notifies players.
+ * Ends the game, sends final leaderboard, saves match results, and closes sockets (after delay).
  *
  * @param {string} roomCode - Room ID
  * @param {number} duration - Duration of the match in seconds
@@ -16,17 +16,10 @@ async function endGame(roomCode, duration, startTime, wss) {
   const leaderboard = [];
   const endTime = new Date();
 
-  // 🛑 Close player sockets
-  for (const player of roomPlayers) {
-    if (player.socket?.readyState === 1) {
-      player.socket.close();
-    }
-  }
-
   // 🧠 Collect scores
   for (const player of roomPlayers) {
     const score = scores.getScore(roomCode, player.id) || 0;
-    leaderboard.push({ userId: player.id, score });
+    leaderboard.push({ userId: player.id, username: player.username, score });
   }
 
   // 🥇 Rank players
@@ -43,7 +36,7 @@ async function endGame(roomCode, duration, startTime, wss) {
     winner,
   });
 
-  // 📣 Notify all in the room
+  // 📣 Notify frontend with final leaderboard (first!)
   sendToRoom(
     roomCode,
     {
@@ -54,6 +47,15 @@ async function endGame(roomCode, duration, startTime, wss) {
   );
 
   console.log(`🏁 Game over in room ${roomCode}. Leaderboard:`, leaderboard);
+
+  // ⏳ Grace period (3s) to let frontend show final leaderboard
+  setTimeout(() => {
+    for (const player of roomPlayers) {
+      if (player.socket?.readyState === 1) {
+        player.socket.close();
+      }
+    }
+  }, 3000);
 }
 
 module.exports = endGame;

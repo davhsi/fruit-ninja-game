@@ -1,3 +1,4 @@
+//websocket/wsHandlers/leaderboard.js
 const rooms = require("../rooms");
 const scores = require("./scoreManager"); // ← this now works again
 const { sendToRoom } = require("../../utils/sendToRoom");

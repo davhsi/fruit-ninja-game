@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom"; // ✅ add this!
 import { onMessage, sendMessage } from "@/services/socket/index.js";
 
-const useGame = ({ roomCode, user, gameDuration, navigate }) => {
+const useGame = ({ roomCode, user, gameDuration }) => {
+  const navigate = useNavigate(); // ✅ now internal
+
   const [fruits, setFruits] = useState([]);
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(gameDuration);
@@ -12,29 +15,17 @@ const useGame = ({ roomCode, user, gameDuration, navigate }) => {
   const timerRef = useRef(null);
   const fallIntervalRef = useRef(null);
   const isGameRunningRef = useRef(false);
-
   const handleSlice = (fruitId) => {
     if (!isGameRunningRef.current || !user?._id) return;
-  
+
     setFruits((prev) => prev.filter((fruit) => fruit.id !== fruitId));
     setScore((prev) => prev + 1);
-  
+
     sendMessage({
-      type: "HIT_FRUIT", 
+      type: "HIT_FRUIT",
       roomCode,
       userId: user._id,
     });
-  };
-  
-
-  const endGame = () => {
-    isGameRunningRef.current = false;
-    clearInterval(timerRef.current);
-    clearInterval(fallIntervalRef.current);
-    setGameOver(true);
-    setGameStarted(false);
-
-    sendMessage({ type: "END_GAME", roomCode });
   };
 
   const startTimer = () => {
@@ -47,23 +38,24 @@ const useGame = ({ roomCode, user, gameDuration, navigate }) => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           console.log("[Game] 🛑 Time's up!");
-          endGame();
+          clearInterval(timerRef.current);
+          clearInterval(fallIntervalRef.current);
+          isGameRunningRef.current = false;
+
+          // ✅ Let backend handle game end (and send END_GAME)
+          sendMessage({ type: "END_GAME", roomCode });
           return 0;
         }
-        console.log("[Game] ⏲️ Time left:", prev - 1);
         return prev - 1;
       });
     }, 1000);
 
     fallIntervalRef.current = setInterval(() => {
-      setFruits((prevFruits) => {
-        const moved = prevFruits
+      setFruits((prevFruits) =>
+        prevFruits
           .map((fruit) => ({ ...fruit, y: fruit.y + fruit.speed }))
-          .filter((fruit) => fruit.y < 100);
-
-        console.log("[Game] 🍌 Updated fruit positions:", moved);
-        return moved;
-      });
+          .filter((fruit) => fruit.y < 100)
+      );
     }, 50);
   };
 
@@ -75,27 +67,36 @@ const useGame = ({ roomCode, user, gameDuration, navigate }) => {
 
         switch (data.type) {
           case "GAME_STARTED":
-            console.log("[Game] 🚀 GAME_STARTED received from backend", data);
+            console.log("[Game] 🚀 GAME_STARTED received from backend");
             startTimer();
             break;
 
           case "FRUIT":
-            console.log("[Game] 🍒 FRUIT broadcast received:", data.payload);
             setFruits((prev) => [...prev, data.payload]);
             break;
 
           case "LEADERBOARD_UPDATE":
-            console.log("[Game] 📊 Leaderboard updated:", data.leaderboard);
-            setLeaderboard(data.leaderboard || []);
+            setLeaderboard(data.payload || []);
             break;
 
-          case "GAME_OVER":
-            console.log("[Game] 🏁 GAME_OVER received");
-            endGame();
+          case "END_GAME":
+            console.log("[Game] 🏁 END_GAME received");
+            clearInterval(timerRef.current);
+            clearInterval(fallIntervalRef.current);
+            isGameRunningRef.current = false;
+
+            const finalBoard = data.payload.leaderboard || [];
+            localStorage.setItem(
+              "finalLeaderboard",
+              JSON.stringify(finalBoard)
+            );
+            localStorage.setItem("finalRoomCode", roomCode);
+
+            // 🔁 Navigate to Leaderboard page
+            navigate(`/leaderboard/${roomCode}`);
             break;
 
           case "PING":
-            console.log("[Game] 🏓 PING received, replying with PONG");
             sendMessage({ type: "PONG" });
             break;
 
@@ -107,8 +108,6 @@ const useGame = ({ roomCode, user, gameDuration, navigate }) => {
       }
     });
 
-
-
     return () => {
       console.log("[Game] Cleanup onMessage and intervals");
       removeListener();
@@ -116,7 +115,7 @@ const useGame = ({ roomCode, user, gameDuration, navigate }) => {
       clearInterval(fallIntervalRef.current);
       isGameRunningRef.current = false;
     };
-  }, [roomCode, user]);
+  }, [roomCode]);
 
   return {
     fruits,

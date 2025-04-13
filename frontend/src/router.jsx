@@ -8,7 +8,7 @@ import Register from "@/pages/Auth/Register";
 import Home from "@/pages/Home";
 import Lobby from "@/pages/Lobby";
 import Game from "@/pages/Game";
-import Leaderboard from "@/pages/Leaderboard";
+import Leaderboard from "@/pages/LeaderboardPage";
 import History from "@/pages/MatchHistory";
 
 const router = createBrowserRouter([

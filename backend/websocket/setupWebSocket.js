@@ -2,11 +2,12 @@ const WebSocket = require("ws");
 const rooms = require("./rooms");
 
 // WebSocket Handlers
+const endGame = require("./wsHandlers/endGame");
 const handleJoinRoom = require("./wsHandlers/joinRoom");
 const handleStartGame = require("./wsHandlers/startGame");
 const { updateScore } = require("./wsHandlers/scoreManager");
 const handleDisconnect = require("./wsHandlers/disconnect");
-
+const broadcastLeaderboard = require("./wsHandlers/leaderboard");
 const activeFruitIntervals = {}; // Store fruit intervals by room
 
 function setupWebSocket(server) {
@@ -56,12 +57,7 @@ function setupWebSocket(server) {
               delete activeFruitIntervals[roomCode];
             }
 
-            // Notify everyone in room
-            const { sendToRoom } = require("../utils/sendToRoom");
-            sendToRoom(roomCode, {
-              type: "END_GAME",
-              payload: { roomCode },
-            });
+            await endGame(roomCode, 30, new Date(), wss);
             break;
 
           default:
