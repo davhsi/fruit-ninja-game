@@ -2,12 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { onMessage, sendMessage } from "@/services/socket/index.js";
 
-const useGame = ({ roomCode, user, gameDuration }) => {
+const useGame = ({ roomCode, user }) => {
   const navigate = useNavigate();
 
   const [fruits, setFruits] = useState([]);
   const [score, setScore] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(gameDuration);
+  const [timeLeft, setTimeLeft] = useState(null);
   const [gameStarted, setGameStarted] = useState(false);
   const [leaderboard, setLeaderboard] = useState([]);
 
@@ -28,18 +28,17 @@ const useGame = ({ roomCode, user, gameDuration }) => {
     });
   };
 
-  const startTimer = () => {
+  const startTimer = (durationFromBackend = 30) => {
     if (isGameRunningRef.current) {
       console.warn("[Game] ⚠️ Timer already running — ignoring duplicate GAME_STARTED");
       return;
     }
 
-    console.log("[Game] ⏱️ Timer started");
+    console.log(`[Game] ⏱️ Timer started for ${durationFromBackend} seconds`);
     isGameRunningRef.current = true;
     setGameStarted(true);
-    setTimeLeft(gameDuration);
+    setTimeLeft(durationFromBackend);
 
-    // Game countdown timer
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -47,14 +46,13 @@ const useGame = ({ roomCode, user, gameDuration }) => {
           clearInterval(timerRef.current);
           clearInterval(fallIntervalRef.current);
           isGameRunningRef.current = false;
-          sendMessage({ type: "END_GAME", roomCode });
+          console.log("[Game] 🛑 Timer done — waiting for END_GAME from backend...");
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
 
-    // Fruit falling logic
     fallIntervalRef.current = setInterval(() => {
       setFruits((prevFruits) =>
         prevFruits
@@ -72,10 +70,12 @@ const useGame = ({ roomCode, user, gameDuration }) => {
         console.log("[Game] ⬇️ Message received:", data);
 
         switch (data.type) {
-          case "GAME_STARTED":
-            console.log("[Game] 🚀 GAME_STARTED received from backend");
-            startTimer();
+          case "GAME_STARTED": {
+            const backendDuration = data.payload?.duration || 30;
+            console.log(`[Game] 🚀 GAME_STARTED received — duration = ${backendDuration}`);
+            startTimer(backendDuration);
             break;
+          }
 
           case "FRUIT":
             setFruits((prev) => [...prev, data.payload]);

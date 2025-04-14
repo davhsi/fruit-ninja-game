@@ -12,7 +12,17 @@ const { sendToRoom } = require("../../utils/sendToRoom");
  * @param {WebSocket.Server} wss - WebSocket server instance
  */
 async function endGame(roomCode, duration, startTime, wss) {
-  const roomPlayers = Array.isArray(rooms[roomCode]?.players) ? rooms[roomCode].players : [];
+  const room = rooms[roomCode];
+  if (!room) return;
+
+  // ✅ Prevent multiple saves
+  if (room._gameSaved) {
+    console.log(`⚠️ Game in room ${roomCode} already saved. Skipping...`);
+    return;
+  }
+  room._gameSaved = true;
+
+  const roomPlayers = Array.isArray(room.players) ? room.players : [];
   const leaderboard = [];
   const endTime = new Date();
 

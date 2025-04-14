@@ -2,6 +2,7 @@ const WebSocket = require("ws");
 const rooms = require("./rooms");
 
 // WebSocket Handlers
+const getMatchHistory = require("./wsHandlers/getMatchHistory");
 const endGame = require("./wsHandlers/endGame");
 const handleJoinRoom = require("./wsHandlers/joinRoom");
 const handleStartGame = require("./wsHandlers/startGame");
@@ -20,7 +21,7 @@ function setupWebSocket(server) {
     ws.on("message", async (message) => {
       try {
         const data = JSON.parse(message);
-        const { type, roomCode, userId, token } = data;
+        const { type, roomCode, userId, token, duration } = data;
 
         console.log("📨 Message type:", type);
 
@@ -52,13 +53,17 @@ function setupWebSocket(server) {
             broadcastLeaderboard(roomCode);
             break;
 
+          case "GET_MATCH_HISTORY":
+            getMatchHistory(data, ws);
+            break;
+
           case "END_GAME":
             if (roomCode && activeFruitIntervals[roomCode]) {
               clearInterval(activeFruitIntervals[roomCode]);
               delete activeFruitIntervals[roomCode];
             }
 
-            await endGame(roomCode, 30, new Date(), wss);
+            await endGame(roomCode, duration, new Date(), wss);
             break;
 
           default:

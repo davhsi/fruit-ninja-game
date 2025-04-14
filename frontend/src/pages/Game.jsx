@@ -44,7 +44,7 @@ const Game = () => {
     fruits,
     leaderboard,
     handleSlice,
-  } = useGame({ roomCode, user, gameDuration: 30 });
+  } = useGame({ roomCode, user});
 
   return (
     <div className="flex min-h-screen bg-gray-100">

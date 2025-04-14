@@ -35,16 +35,38 @@ async function createUser(userData) {
   return await User.create(userData);
 }
 
-async function getMatchesForUser(userId) {
-  return await Match.find({ "players.userId": userId }).sort({ startTime: -1 }).lean();
+async function getMatchHistoryByUser(userId) {
+  const matches = await Match.find({ "players.userId": userId })
+    .sort({ startTime: -1 })
+    .lean();
+
+  // collect all unique userIds across all matches
+  const allUserIds = [
+    ...new Set(matches.flatMap((match) => match.players.map((p) => p.userId))),
+  ];
+
+  const users = await User.find({ _id: { $in: allUserIds } }, "_id username").lean();
+  const userMap = Object.fromEntries(users.map((u) => [u._id.toString(), u.username]));
+
+  // enrich players and normalize some fields for frontend compatibility
+  return matches.map((match) => ({
+    ...match,
+    players: match.players.map((p) => ({
+      ...p,
+      username: userMap[p.userId] || "Anonymous",
+    })),
+    roomCode: match.roomId, // for frontend
+    endedAt: match.endTime, // for frontend
+  }));
 }
+
 
 
 module.exports = {
   connect,
   saveMatch,
   getMatches,
-  getMatchesForUser,
+  getMatchHistoryByUser,
   getUserByEmail,
   createUser,
 };
