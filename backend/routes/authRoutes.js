@@ -17,7 +17,7 @@ router.post("/register", async (req, res) => {
     const newUser = await db.createUser({ email, username, password });
 
     // Generate a token after creating the user
-    const token = signToken({ id: newUser._id, email: newUser.email });
+    const token = signToken({ id: newUser._id, email: newUser.email, username: newUser.username });
 
     // Respond with the user data and token
     res.status(201).json({ token, user: newUser });
@@ -42,7 +42,7 @@ router.post("/login", async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
 
-    const token = signToken({ id: user._id, email: user.email });
+    const token = signToken({ id: user._id, email: user.email, username: user.username });
     res.json({ token, user });
   } catch (err) {
     res.status(500).json({ message: "Login failed", error: err.message });

@@ -14,7 +14,7 @@ function handleJoinRoom(ws, data, wss) {
   try {
     const user = jwt.verify(token, process.env.JWT_SECRET);
     const userId = user.id;
-    const username = user.email;
+    const username = user.username;
 
     console.log("✅ Token verified:", username);
 

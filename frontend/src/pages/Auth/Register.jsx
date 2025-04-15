@@ -1,11 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import API_BASE_URL from "@/config";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
-
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -14,29 +14,40 @@ const Register = () => {
     password: "",
   });
 
-  const navigate = useNavigate(); // Initialize useNavigate
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleChange = (e) =>
+  const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError(""); // clear error on input change
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+
     try {
       const res = await fetch(`${API_BASE_URL}/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
+
       const data = await res.json();
+
       if (res.ok) {
-        console.log("✅ Registered:", data);
-        // Redirect to login page after successful registration
-        navigate("/login"); // Add this line
+        toast.success("Registration successful! You can now log in.");
+        navigate("/login");
       } else {
-        console.error("❌ Registration failed:", data.message);
+        setError(data.message || "Registration failed");
+        toast.error(data.message || "Registration failed");
       }
     } catch (err) {
-      console.error("⚠️ Network error:", err.message);
+      setError("Network error. Please try again.");
+      toast.error("Network error. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -77,8 +88,11 @@ const Register = () => {
               required
             />
           </div>
-          <Button type="submit" className="w-full">
-            Sign Up
+
+          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Signing up..." : "Sign Up"}
           </Button>
         </form>
       </Card>

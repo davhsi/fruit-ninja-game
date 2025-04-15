@@ -1,8 +1,20 @@
-// backend/redis/redisClient.js
-const Redis = require("ioredis");
-const redis = new Redis({
-  host: process.env.REDIS_HOST || "127.0.0.1",
-  port: process.env.REDIS_PORT || 6379
-});
+import Redis from 'ioredis';
+import dotenv from 'dotenv';
 
-module.exports = redis;
+
+const redisCluster = new Redis.Cluster(
+  [
+    {
+      host: process.env.REDIS_HOST,
+      port: Number(process.env.REDIS_PORT),
+    },
+  ],
+  {
+    dnsLookup: (address, callback) => callback(null, address),
+    redisOptions: {
+      tls: {}, // for ElastiCache serverless
+    },
+  }
+);
+
+export default redisCluster;

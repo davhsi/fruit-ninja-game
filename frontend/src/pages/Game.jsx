@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from "react";
+import React, { useMemo, useEffect, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import useGame from "@/hooks/useGame";
 import LeaderboardPanel from "@/components/LeaderboardPanel";
@@ -7,36 +7,27 @@ const Game = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 🧠 roomCode: from location or fallback to localStorage
+  // 🧠 Get roomCode + user
   const roomCode = useMemo(() => {
     return location.state?.roomCode || localStorage.getItem("finalRoomCode");
   }, [location.state]);
 
-  // 🧠 user: safely parsed from localStorage
   const user = useMemo(() => {
     try {
       return JSON.parse(localStorage.getItem("user"));
-    } catch (e) {
-      console.error("❌ Failed to parse user from localStorage");
+    } catch {
       return null;
     }
   }, []);
 
-  // 🛡️ Redirect if essentials are missing
   useEffect(() => {
     if (!roomCode || !user) {
-      console.warn("🚨 Missing roomCode or user — redirecting to home");
       navigate("/");
     }
   }, [roomCode, user, navigate]);
 
-  // 🧪 Debug mount/unmount (only in dev)
-  useEffect(() => {
-    console.log("🌀 Game mounted");
-    return () => console.log("💨 Game unmounted");
-  }, []);
+  const gameAreaRef = useRef(null);
 
-  // 🕹️ Game hook
   const {
     gameStarted,
     timeLeft,
@@ -44,19 +35,24 @@ const Game = () => {
     fruits,
     leaderboard,
     handleSlice,
-  } = useGame({ roomCode, user});
+  } = useGame({ roomCode, user });
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex flex-col md:flex-row min-h-screen bg-gray-100">
       {/* 🎮 Game Area */}
-      <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden">
-        <h2 className="absolute top-4 left-4 text-lg font-bold">
+      <div
+        ref={gameAreaRef}
+        className="relative flex-1 w-full h-[70vh] md:h-screen overflow-hidden flex items-center justify-center"
+      >
+        {/* ⏱️ UI */}
+        <div className="absolute top-4 left-4 text-sm md:text-lg font-bold">
           Time: {timeLeft}s
-        </h2>
-        <h2 className="absolute top-4 right-4 text-lg font-bold">
+        </div>
+        <div className="absolute top-4 right-4 text-sm md:text-lg font-bold">
           Score: {score}
-        </h2>
+        </div>
 
+        {/* 👾 Fruits */}
         {gameStarted ? (
           <div className="w-full h-full relative">
             {fruits.length === 0 && (
@@ -64,11 +60,12 @@ const Game = () => {
                 🧨 No fruits to render!
               </div>
             )}
+
             {fruits.map((fruit) => (
               <div
                 key={fruit.id}
                 onClick={() => handleSlice(fruit.id)}
-                className="absolute text-4xl cursor-pointer select-none transition-transform"
+                className="absolute text-3xl md:text-5xl cursor-pointer select-none"
                 style={{
                   left: `${fruit.x}%`,
                   top: `${fruit.y}%`,
@@ -80,15 +77,17 @@ const Game = () => {
             ))}
           </div>
         ) : (
-          <div className="text-xl text-gray-700 font-semibold">
+          <div className="text-lg text-gray-700 font-semibold text-center">
             Waiting for host to start the game...
           </div>
         )}
       </div>
 
-      {/* 📊 Live Leaderboard */}
-      <LeaderboardPanel scores={leaderboard} highlightUserId={user?._id} />
+      {/* 📊 Leaderboard */}
+      <div className="w-full md:w-80 p-4">
+        <LeaderboardPanel scores={leaderboard} highlightUserId={user?._id} />
       </div>
+    </div>
   );
 };
 
