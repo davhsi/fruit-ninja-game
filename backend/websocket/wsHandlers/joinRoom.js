@@ -1,15 +1,14 @@
 require("dotenv").config();
-console.log("🧪 JWT_SECRET in JoinRooms.js:", process.env.JWT_SECRET);
-
-const rooms = require("../rooms");
 const jwt = require("jsonwebtoken");
 const { sendToRoom } = require("../../utils/sendToRoom");
 
-function handleJoinRoom(ws, data, wss) {
+const { getRoom, setRoom } = require("../rooms");
+const { addSocket, getSocketsInRoom } = require("./inMemorySockets");
+
+async function handleJoinRoom(ws, data, wss) {
   console.log("🔥 handleJoinRoom called");
 
   const { token, roomCode } = data;
-
 
   try {
     const user = jwt.verify(token, process.env.JWT_SECRET);
@@ -18,63 +17,51 @@ function handleJoinRoom(ws, data, wss) {
 
     console.log("✅ Token verified:", username);
 
-    // Create room if doesn't exist
-    if (!rooms[roomCode]) {
-      console.log("🆕 Creating new room:", roomCode);
-      rooms[roomCode] = {
-        players: [],
-        scores: {},
-      };
-    }
+    // Get or initialize room
+    const room = (await getRoom(roomCode)) || { players: [], scores: {} };
 
-    // Close duplicate sockets for the same user in this room
-    wss.clients.forEach((client) => {
+    // Close duplicate sockets
+    getSocketsInRoom(roomCode).forEach((client, existingUserId) => {
       if (
         client !== ws &&
         client.readyState === 1 &&
-        client.userId === userId &&
-        client.roomCode === roomCode
+        existingUserId === userId
       ) {
         console.log("🛑 Closing duplicate socket for", username);
         client.close();
       }
     });
 
-    // Tag the current socket with room info
+    // Tag current socket
     ws.roomCode = roomCode;
     ws.userId = userId;
 
-    // Check if user already in room
-    const existingPlayer = rooms[roomCode].players.find(p => p.id === userId);
+    // Add socket to in-memory map
+    addSocket(roomCode, userId, ws);
+
+    // Check if player already exists
+    const existingPlayer = room.players.find(p => p.id === userId);
 
     if (!existingPlayer) {
-      // Add player to room
-      rooms[roomCode].players.push({
-        id: userId,
-        username,
-        ws,
-      });
-
-      // Initialize score if not present
-      rooms[roomCode].scores[userId] = 0;
-
+      room.players.push({ id: userId, username });
+      room.scores[userId] = 0;
       console.log("👥 Added new player:", username);
     } else {
-      // Update ws in case it's a reconnect
-      existingPlayer.ws = ws;
       console.log("🔁 Reconnected player:", username);
     }
 
-    // Log current players
-    console.log("👥 Players in room", roomCode, rooms[roomCode].players.map(p => p.username));
-    const hostId = rooms[roomCode].players[0]?.id;
+    // Save updated room to Redis
+    await setRoom(roomCode, room);
 
-    // Send updated player list to everyone
+    // Get host
+    const hostId = room.players[0]?.id;
+
+    // Broadcast player list
     sendToRoom(roomCode, {
       type: "PLAYER_LIST",
       payload: {
         hostId,
-        players: rooms[roomCode].players.map(p => ({
+        players: room.players.map(p => ({
           id: p.id,
           username: p.username,
         })),

@@ -1,46 +1,49 @@
-const rooms = require("../rooms");
+// websocket/wsHandlers/disconnect.js
+const { getRoom, setRoom, deleteRoom } = require("../rooms");
+const { getSocket } = require("./inMemorySockets");
 
-function handleDisconnect(socket, wss, activeFruitIntervals) {
+async function handleDisconnect(socket, wss, activeFruitIntervals) {
   const { roomId, userId } = socket;
   if (!roomId || !userId) return;
 
   console.log(`⚠️ Player ${userId} disconnected from room ${roomId}`);
 
-  const roomPlayers = rooms[roomId] || [];
+  const room = await getRoom(roomId);
+  if (!room || !Array.isArray(room.players)) return;
 
-  // Mark player as inactive
-  const updatedPlayers = roomPlayers.map((client) =>
-    client.id === userId ? { ...client, active: false } : client
+  const updatedPlayers = room.players.map((player) =>
+    player.id === userId ? { ...player, active: false } : player
   );
 
-  rooms[roomId] = updatedPlayers;
+  // Save updated room state
+  await setRoom(roomId, { ...room, players: updatedPlayers });
 
-  // Notify remaining clients
-  updatedPlayers.forEach((client) => {
-    if (client.socket && client.socket.readyState === 1) {
-      client.socket.send(
-        JSON.stringify({
-          type: "player_disconnected",
-          userId,
-        })
-      );
+  // Notify other players
+  for (const player of updatedPlayers) {
+    if (player.id !== userId) {
+      const targetSocket = getSocket(player.id);
+      if (targetSocket && targetSocket.readyState === 1) {
+        targetSocket.send(
+          JSON.stringify({
+            type: "player_disconnected",
+            userId,
+          })
+        );
+      }
     }
-  });
+  }
 
-  // Check if room is now fully empty (all inactive or gone)
   const allInactive = updatedPlayers.every((p) => !p.active);
 
   if (allInactive) {
     console.log(`🧹 Cleaning up room ${roomId} (empty)`);
 
-    // Clear fruit drop interval if running
     if (activeFruitIntervals[roomId]) {
       clearInterval(activeFruitIntervals[roomId]);
       delete activeFruitIntervals[roomId];
     }
 
-    // Remove room entirely
-    delete rooms[roomId];
+    await deleteRoom(roomId);
   }
 }
 

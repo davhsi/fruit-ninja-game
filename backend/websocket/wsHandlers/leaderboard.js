@@ -1,9 +1,9 @@
-const rooms = require("../rooms");
-const scores = require("./scoreManager");
+const { getRoom } = require("../rooms");
+const { getScore } = require("./scoreManager");
 const { sendToRoom } = require("../../utils/sendToRoom");
 
-function broadcastLeaderboard(roomCode) {
-  const room = rooms[roomCode];
+async function broadcastLeaderboard(roomCode) {
+  const room = await getRoom(roomCode);
 
   if (!room || !Array.isArray(room.players)) {
     console.error(`[Leaderboard] ❌ Invalid room structure for ${roomCode}. Value:`, room);
@@ -12,18 +12,22 @@ function broadcastLeaderboard(roomCode) {
 
   console.log(`📣 Broadcasting leaderboard for room: ${roomCode}`);
 
-  const leaderboard = room.players
-    .filter(player => player.id)
-    .map(player => {
-      const score = scores.getScore(roomCode, player.id);
-      console.log(`🔍 Leaderboard Entry | user: ${player.username} (${player.id}), score: ${score}`);
-      return {
-        userId: player.id,
-        username: player.username,
-        score: score,
-      };
-    })
-    .sort((a, b) => b.score - a.score);
+  const leaderboard = [];
+
+  for (const player of room.players) {
+    if (!player?.id) continue;
+
+    const score = await getScore(roomCode, player.id);
+    console.log(`🔍 Leaderboard Entry | user: ${player.username} (${player.id}), score: ${score}`);
+
+    leaderboard.push({
+      userId: player.id,
+      username: player.username,
+      score,
+    });
+  }
+
+  leaderboard.sort((a, b) => b.score - a.score);
 
   sendToRoom(roomCode, {
     type: "LEADERBOARD_UPDATE",

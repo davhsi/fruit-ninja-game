@@ -1,7 +1,6 @@
 const WebSocket = require("ws");
-const rooms = require("./rooms");
 
-// WebSocket Handlers
+// Redis-powered WebSocket Handlers
 const getMatchHistory = require("./wsHandlers/getMatchHistory");
 const endGame = require("./wsHandlers/endGame");
 const handleJoinRoom = require("./wsHandlers/joinRoom");
@@ -9,7 +8,8 @@ const handleStartGame = require("./wsHandlers/startGame");
 const { updateScore } = require("./wsHandlers/scoreManager");
 const handleDisconnect = require("./wsHandlers/disconnect");
 const broadcastLeaderboard = require("./wsHandlers/leaderboard");
-const activeFruitIntervals = {}; // Store fruit intervals by room
+
+const activeFruitIntervals = {}; // Local only
 
 function setupWebSocket(server) {
   const wss = new WebSocket.Server({ server });
@@ -62,7 +62,6 @@ function setupWebSocket(server) {
               clearInterval(activeFruitIntervals[roomCode]);
               delete activeFruitIntervals[roomCode];
             }
-
             await endGame(roomCode, duration, new Date(), wss);
             break;
 
@@ -76,7 +75,7 @@ function setupWebSocket(server) {
 
     ws.on("close", () => {
       console.log("⚠️ WebSocket disconnected");
-      handleDisconnect(ws, wss);
+      handleDisconnect(ws, wss, activeFruitIntervals); // Pass activeFruitIntervals
     });
   });
 }

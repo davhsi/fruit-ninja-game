@@ -1,42 +1,39 @@
-const rooms = require("../rooms");
+const { getRoom, markGameSaved } = require("../rooms");
 const db = require("../../services/db/dbService");
 const scores = require("./scoreManager");
 const { sendToRoom } = require("../../utils/sendToRoom");
+const { getSocket } = require("./inMemorySockets");
 
 /**
  * Ends the game, sends final leaderboard, saves match results, and closes sockets (after delay).
- *
- * @param {string} roomCode - Room ID
- * @param {number} duration - Duration of the match in seconds
- * @param {Date} startTime - When the match started
- * @param {WebSocket.Server} wss - WebSocket server instance
  */
 async function endGame(roomCode, duration, startTime, wss) {
-  const room = rooms[roomCode];
+  const room = await getRoom(roomCode);
   if (!room) return;
 
-  // ✅ Prevent multiple saves
-  if (room._gameSaved) {
+  if (room.gameSaved) {
     console.log(`⚠️ Game in room ${roomCode} already saved. Skipping...`);
     return;
   }
-  room._gameSaved = true;
+
+  await markGameSaved(roomCode); // ✅ write to Redis to prevent re-saving
 
   const roomPlayers = Array.isArray(room.players) ? room.players : [];
   const leaderboard = [];
   const endTime = new Date();
 
-  // 🧠 Collect scores
   for (const player of roomPlayers) {
-    const score = scores.getScore(roomCode, player.id) || 0;
-    leaderboard.push({ userId: player.id, username: player.username, score });
+    const score = await scores.getScore(roomCode, player.id) || 0;
+    leaderboard.push({
+      userId: player.id,
+      username: player.username,
+      score,
+    });
   }
 
-  // 🥇 Rank players
   leaderboard.sort((a, b) => b.score - a.score);
   const winner = leaderboard[0]?.userId;
 
-  // 💾 Persist match results
   await db.saveMatch({
     roomId: roomCode,
     players: leaderboard,
@@ -46,7 +43,6 @@ async function endGame(roomCode, duration, startTime, wss) {
     winner,
   });
 
-  // 📣 Notify frontend with final leaderboard (first!)
   sendToRoom(
     roomCode,
     {
@@ -58,11 +54,12 @@ async function endGame(roomCode, duration, startTime, wss) {
 
   console.log(`🏁 Game over in room ${roomCode}. Leaderboard:`, leaderboard);
 
-  // ⏳ Grace period (3s) to let frontend show final leaderboard
+  // Gracefully close all sockets after 3s
   setTimeout(() => {
     for (const player of roomPlayers) {
-      if (player.socket?.readyState === 1) {
-        player.socket.close();
+      const socket = getSocket(player.id);
+      if (socket?.readyState === 1) {
+        socket.close();
       }
     }
   }, 3000);

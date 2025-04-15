@@ -1,17 +1,24 @@
 const { sendToRoom } = require("../../utils/sendToRoom");
 const { v4: uuidv4 } = require("uuid");
 const emojiOptions = ["🍎", "🍌", "🍉", "🍓", "🍇", "🍍"];
-const rooms = require("../rooms");
+
+const { getRoom } = require("../rooms");
+const { getSocket } = require("./inMemorySockets");
 const endGame = require("./endGame");
 
-function handleStartGame(data, wss, ws, activeFruitIntervals) {
+async function handleStartGame(data, wss, ws, activeFruitIntervals) {
   const { roomCode, duration } = data;
-  const room = rooms[roomCode];
+
+  const room = await getRoom(roomCode);
   if (!room) return;
 
   const hostId = room.players[0]?.id;
-  if (ws.userId !== hostId) return;
+  if (ws.userId !== hostId) {
+    console.log("⛔ Not the host, cannot start game");
+    return;
+  }
 
+  // Cleanup any previous interval
   if (activeFruitIntervals[roomCode]) {
     clearInterval(activeFruitIntervals[roomCode]);
     delete activeFruitIntervals[roomCode];
@@ -19,7 +26,6 @@ function handleStartGame(data, wss, ws, activeFruitIntervals) {
 
   const gameStartTime = new Date();
 
-  // ✅ Include roomCode in GAME_STARTED
   sendToRoom(roomCode, {
     type: "GAME_STARTED",
     payload: {
@@ -28,7 +34,7 @@ function handleStartGame(data, wss, ws, activeFruitIntervals) {
     },
   });
 
-  // ✅ Start dropping fruits, attach roomCode to each one
+  // Start fruit dropper
   activeFruitIntervals[roomCode] = setInterval(() => {
     const fruit = {
       id: uuidv4(),
@@ -42,11 +48,12 @@ function handleStartGame(data, wss, ws, activeFruitIntervals) {
       type: "FRUIT",
       payload: {
         ...fruit,
-        roomCode, // ✅ new addition
+        roomCode,
       },
     });
   }, 1000);
 
+  // End game after timeout
   setTimeout(() => {
     clearInterval(activeFruitIntervals[roomCode]);
     delete activeFruitIntervals[roomCode];
