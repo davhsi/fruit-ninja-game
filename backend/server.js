@@ -15,8 +15,16 @@ const dbService = require("./services/db/dbService"); // ✅ Import DB service
 
 
 const app = express();
-app.use(cors());
 app.use(express.json());
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://fruitninja.davish.me"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true,
+}));
+
 
 app.use("/api/auth", authRoutes);
 app.use("/api/room", roomRoutes);
