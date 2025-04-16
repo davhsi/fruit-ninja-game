@@ -19,7 +19,8 @@ app.use(express.json());
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://fruitninja.davish.me"
+    "https://fruitninja.davish.me",
+    "https://fruitninja-api.davish.me"
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true,
