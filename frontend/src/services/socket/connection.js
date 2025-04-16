@@ -11,7 +11,7 @@ import { startHeartbeat, stopHeartbeat } from "./heartbeat";
 import { flushQueue, sendMessage } from "./messageQueue";
 import { handleIncomingMessage } from "./listeners";
 
-const URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
+const URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
 const WS_URL = URL.replace(/^http/, "ws");
 
 export function connectSocket({ token, roomCode } = {}) {
