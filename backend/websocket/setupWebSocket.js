@@ -48,10 +48,10 @@ function setupWebSocket(server) {
             broadcastLeaderboard(roomCode);
             break;
 
-          case "HIT_BOMB":
-            await updateScore(roomCode, userId, -1);
-            broadcastLeaderboard(roomCode);
-            break;
+          // case "HIT_BOMB":
+          //   await updateScore(roomCode, userId, -1);
+          //   broadcastLeaderboard(roomCode);
+          //   break;
 
           case "GET_MATCH_HISTORY":
             getMatchHistory(data, ws);

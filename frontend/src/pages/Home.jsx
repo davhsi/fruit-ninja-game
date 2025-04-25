@@ -28,7 +28,9 @@ export default function Home() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-tr from-zinc-800 to-zinc-950 text-white">
       <Card className="w-[400px] p-6 rounded-2xl shadow-xl bg-zinc-900 text-white">
         <CardContent>
-          <h1 className="text-2xl font-bold mb-4">Welcome, {user?.username || "Ninja"} 👋</h1>
+          <h1 className="text-2xl font-bold mb-4">
+            Welcome, {user?.username || "Ninja"} 👋
+          </h1>
 
           <Button className="w-full mb-4" onClick={generateRoomCode}>
             Create Room
@@ -49,7 +51,7 @@ export default function Home() {
 
           <Button
             variant="outline"
-            className="w-full mt-4 border-zinc-600"
+            className="w-full mt-4 bg-zinc-800 text-white border-zinc-600 hover:bg-zinc-700 hover:text-white"
             onClick={() => navigate("/history")}
           >
             View History
