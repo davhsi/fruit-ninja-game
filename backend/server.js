@@ -3,6 +3,8 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const http = require("http");
+const job = require('./cron');
+
 dotenv.config();
 console.log("🧪 JWT_SECRET:", process.env.JWT_SECRET);
 
