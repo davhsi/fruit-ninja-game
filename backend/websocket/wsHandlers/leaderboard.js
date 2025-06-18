@@ -6,7 +6,7 @@ async function broadcastLeaderboard(roomCode) {
   const room = await getRoom(roomCode);
 
   if (!room || !Array.isArray(room.players)) {
-    console.error(`[Leaderboard] ❌ Invalid room structure for ${roomCode}. Value:`, room);
+    console.error("[Leaderboard] ❌ Invalid room structure for %s. Value:", roomCode, room);
     return;
   }
 
