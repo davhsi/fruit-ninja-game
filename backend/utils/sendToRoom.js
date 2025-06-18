@@ -17,7 +17,7 @@ async function sendToRoom(roomCode, message) {
     const players = JSON.parse(redisRoom.players || "[]");
     console.log("📤 Broadcasting to room %s | Players:", roomCode, players.map(p => p.username));
   } catch (e) {
-    console.error(`❌ Failed to fetch Redis room data for ${roomCode}:`, e.message);
+    console.error("❌ Failed to fetch Redis room data for %s:", roomCode, e.message);
   }
 
   for (const [userId, socket] of socketMap.entries()) {
