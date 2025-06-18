@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const JWT_SECRET = process.env.JWT_SECRET;
 
-console.log("🧪 jwtUtils: JWT_SECRET =", process.env.JWT_SECRET);
+// Removed logging of JWT_SECRET to prevent exposure of sensitive information.
 
 exports.signToken = (payload) => jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
 
