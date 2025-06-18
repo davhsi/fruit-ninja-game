@@ -28,7 +28,10 @@ async function getMatches() {
 }
 
 async function getUserByEmail(email) {
-  return await User.findOne({ email }).lean();
+  if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error("Invalid email format");
+  }
+  return await User.findOne({ email: { $eq: email } }).lean();
 }
 
 async function createUser(userData) {
