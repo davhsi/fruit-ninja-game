@@ -7,7 +7,7 @@ async function sendToRoom(roomCode, message) {
   const socketMap = getSocketsInRoom(roomCode);
 
   if (!socketMap || socketMap.size === 0) {
-    console.warn(`❗ sendToRoom | No sockets in room ${roomCode}`);
+    console.warn("❗ sendToRoom | No sockets in room %s", roomCode);
     return;
   }
 
@@ -15,14 +15,14 @@ async function sendToRoom(roomCode, message) {
   try {
     const redisRoom = await redis.hgetall(`room:${roomCode}`);
     const players = JSON.parse(redisRoom.players || "[]");
-    console.log("📤 Broadcasting to room %s | Players:", roomCode, players.map(p => p.username));
+    console.log("📤 Broadcasting to room %s | Players:", roomCode, players.map((p) => p.username));
   } catch (e) {
-    console.error("❌ Failed to fetch Redis room data for %s:", roomCode, e.message);
+    console.error("❌ Failed to fetch Redis room data for %s: %s", roomCode, e.message);
   }
 
   for (const [userId, socket] of socketMap.entries()) {
     if (socket.readyState === 1) {
-      console.log(`📤 sendToRoom(${roomCode}) → userId: ${userId}`, message);
+      console.log("📤 sendToRoom(%s) → userId: %s", roomCode, userId, message);
       socket.send(JSON.stringify(message));
     }
   }
