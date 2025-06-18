@@ -6,7 +6,7 @@ const http = require("http");
 const job = require('./cron');
 
 dotenv.config();
-console.log("🧪 JWT_SECRET:", process.env.JWT_SECRET);
+// Removed logging of JWT_SECRET to prevent exposure of sensitive information
 
 const setupWebSocket = require("./websocket/setupWebSocket");
 const authRoutes = require("./routes/authRoutes");
