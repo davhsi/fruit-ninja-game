@@ -34,6 +34,9 @@ exports.getRoom = async (roomCode) => {
 };
 
 exports.startGame = async (roomCode) => {
+  if (roomCode === '__proto__' || roomCode === 'constructor' || roomCode === 'prototype') {
+    throw new Error("Invalid room code");
+  }
   const room = rooms[roomCode];
   if (!room) throw new Error("Room not found");
   if (room.gameStarted) throw new Error("Game already started");

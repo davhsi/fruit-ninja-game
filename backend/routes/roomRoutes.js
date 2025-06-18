@@ -30,6 +30,9 @@ router.post("/join", async (req, res) => {
 // @route POST /api/room/start
 router.post("/start", async (req, res) => {
     const { roomCode } = req.body;
+    if (roomCode === '__proto__' || roomCode === 'constructor' || roomCode === 'prototype') {
+      return res.status(400).json({ message: "Invalid room code" });
+    }
   
     try {
       const room = await roomService.startGame(roomCode);
