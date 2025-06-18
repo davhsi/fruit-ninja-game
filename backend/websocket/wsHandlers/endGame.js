@@ -52,7 +52,7 @@ async function endGame(roomCode, duration, startTime, wss) {
     wss
   );
 
-  console.log(`🏁 Game over in room ${roomCode}. Leaderboard:`, leaderboard);
+  console.log("🏁 Game over in room %s. Leaderboard:", roomCode, leaderboard);
 
   // Gracefully close all sockets after 3s
   setTimeout(() => {
