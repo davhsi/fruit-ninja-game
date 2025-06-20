@@ -34,7 +34,7 @@ async function broadcastLeaderboard(roomCode) {
     payload: leaderboard,
   });
 
-  console.log(`📊 Final Leaderboard Payload for ${roomCode}:`, leaderboard);
+  console.log("📊 Final Leaderboard Payload for %s:", roomCode, leaderboard);
 }
 
 module.exports = broadcastLeaderboard;
